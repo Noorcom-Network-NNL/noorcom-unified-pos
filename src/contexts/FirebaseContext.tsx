@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firestore/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export type UserRole = 'admin' | 'manager' | 'sales' | 'inventory' | 'accounts';
@@ -53,7 +53,7 @@ interface FirebaseProviderProps {
   children: ReactNode;
 }
 
-export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) => {
+export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
