@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,8 +11,11 @@ import {
   CreditCard,
   FileText,
   Search,
-  Mail
+  Mail,
+  LogOut
 } from 'lucide-react';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import LoginForm from '@/components/LoginForm';
 import Dashboard from '@/components/Dashboard';
 import SalesModule from '@/components/SalesModule';
 import InventoryModule from '@/components/InventoryModule';
@@ -21,12 +23,13 @@ import CustomersModule from '@/components/CustomersModule';
 import ReportsModule from '@/components/ReportsModule';
 
 const Index = () => {
+  const { currentUser, logout } = useFirebase();
   const [activeModule, setActiveModule] = useState('dashboard');
-  const [currentUser] = useState({
-    name: 'Admin User',
-    role: 'Administrator',
-    location: 'Main Branch'
-  });
+
+  // Show login form if user is not authenticated
+  if (!currentUser) {
+    return <LoginForm />;
+  }
 
   const modules = [
     { id: 'dashboard', name: 'Dashboard', icon: Calendar },
@@ -75,10 +78,13 @@ const Index = () => {
             <div className="flex items-center space-x-2">
               <User className="h-5 w-5 text-gray-400" />
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{currentUser.name}</p>
-                <p className="text-xs text-gray-500">{currentUser.role}</p>
+                <p className="text-sm font-medium text-gray-900">{currentUser.email}</p>
+                <p className="text-xs text-gray-500">Administrator</p>
               </div>
             </div>
+            <Button variant="outline" size="sm" onClick={logout}>
+              <LogOut className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4" />
             </Button>
