@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,8 +12,35 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import { testFirebaseConnection } from '@/services/firebaseService';
+import { useToast } from '@/hooks/use-toast';
+import NewSaleDialog from '@/components/NewSaleDialog';
+import AddCustomerDialog from '@/components/AddCustomerDialog';
 
 const Dashboard = () => {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Test Firebase connection when dashboard loads
+    const testConnection = async () => {
+      try {
+        const isConnected = await testFirebaseConnection();
+        if (isConnected) {
+          console.log('Firebase integration working successfully');
+        }
+      } catch (error) {
+        console.error('Firebase connection test failed:', error);
+        toast({
+          title: "Database Connection",
+          description: "Failed to connect to Firebase database",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    testConnection();
+  }, [toast]);
+
   const stats = [
     {
       title: 'Today\'s Sales',
@@ -202,18 +228,22 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button className="h-20 flex-col space-y-2">
-              <ShoppingCart className="h-6 w-6" />
-              <span>New Sale</span>
-            </Button>
+            <NewSaleDialog>
+              <Button className="h-20 flex-col space-y-2">
+                <ShoppingCart className="h-6 w-6" />
+                <span>New Sale</span>
+              </Button>
+            </NewSaleDialog>
             <Button variant="outline" className="h-20 flex-col space-y-2">
               <FileText className="h-6 w-6" />
               <span>Create Invoice</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <Users className="h-6 w-6" />
-              <span>Add Customer</span>
-            </Button>
+            <AddCustomerDialog>
+              <Button variant="outline" className="h-20 flex-col space-y-2">
+                <Users className="h-6 w-6" />
+                <span>Add Customer</span>
+              </Button>
+            </AddCustomerDialog>
             <Button variant="outline" className="h-20 flex-col space-y-2">
               <Calendar className="h-6 w-6" />
               <span>Schedule Job</span>

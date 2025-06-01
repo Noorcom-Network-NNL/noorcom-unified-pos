@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,6 +22,8 @@ import SalesModule from '@/components/SalesModule';
 import InventoryModule from '@/components/InventoryModule';
 import CustomersModule from '@/components/CustomersModule';
 import ReportsModule from '@/components/ReportsModule';
+import NewSaleDialog from '@/components/NewSaleDialog';
+import AddCustomerDialog from '@/components/AddCustomerDialog';
 
 const Index = () => {
   const { currentUser, userProfile, logout, hasPermission } = useFirebase();
@@ -126,16 +129,20 @@ const Index = () => {
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h3>
               <div className="space-y-2">
                 {hasPermission('sales') && (
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    New Sale
-                  </Button>
+                  <NewSaleDialog>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      New Sale
+                    </Button>
+                  </NewSaleDialog>
                 )}
                 {hasPermission('sales') && (
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <User className="h-4 w-4 mr-2" />
-                    Add Customer
-                  </Button>
+                  <AddCustomerDialog>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <User className="h-4 w-4 mr-2" />
+                      Add Customer
+                    </Button>
+                  </AddCustomerDialog>
                 )}
                 {hasPermission('accounts') && (
                   <Button variant="outline" size="sm" className="w-full justify-start">
