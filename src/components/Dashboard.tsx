@@ -16,6 +16,8 @@ import { testFirebaseConnection } from '@/services/firebaseService';
 import { useToast } from '@/hooks/use-toast';
 import NewSaleDialog from '@/components/NewSaleDialog';
 import AddCustomerDialog from '@/components/AddCustomerDialog';
+import CreateInvoiceDialog from '@/components/CreateInvoiceDialog';
+import ScheduleJobDialog from '@/components/ScheduleJobDialog';
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -234,20 +236,24 @@ const Dashboard = () => {
                 <span>New Sale</span>
               </Button>
             </NewSaleDialog>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <FileText className="h-6 w-6" />
-              <span>Create Invoice</span>
-            </Button>
+            <CreateInvoiceDialog>
+              <Button variant="outline" className="h-20 flex-col space-y-2">
+                <FileText className="h-6 w-6" />
+                <span>Create Invoice</span>
+              </Button>
+            </CreateInvoiceDialog>
             <AddCustomerDialog>
               <Button variant="outline" className="h-20 flex-col space-y-2">
                 <Users className="h-6 w-6" />
                 <span>Add Customer</span>
               </Button>
             </AddCustomerDialog>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <Calendar className="h-6 w-6" />
-              <span>Schedule Job</span>
-            </Button>
+            <ScheduleJobDialog>
+              <Button variant="outline" className="h-20 flex-col space-y-2">
+                <Calendar className="h-6 w-6" />
+                <span>Schedule Job</span>
+              </Button>
+            </ScheduleJobDialog>
           </div>
         </CardContent>
       </Card>

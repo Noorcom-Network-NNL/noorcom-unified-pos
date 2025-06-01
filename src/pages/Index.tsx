@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +23,8 @@ import CustomersModule from '@/components/CustomersModule';
 import ReportsModule from '@/components/ReportsModule';
 import NewSaleDialog from '@/components/NewSaleDialog';
 import AddCustomerDialog from '@/components/AddCustomerDialog';
+import CreateInvoiceDialog from '@/components/CreateInvoiceDialog';
+import ScheduleJobDialog from '@/components/ScheduleJobDialog';
 
 const Index = () => {
   const { currentUser, userProfile, logout, hasPermission } = useFirebase();
@@ -145,10 +146,20 @@ const Index = () => {
                   </AddCustomerDialog>
                 )}
                 {hasPermission('accounts') && (
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <Mail className="h-4 w-4 mr-2" />
-                    Send Invoice
-                  </Button>
+                  <CreateInvoiceDialog>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Create Invoice
+                    </Button>
+                  </CreateInvoiceDialog>
+                )}
+                {hasPermission('sales') && (
+                  <ScheduleJobDialog>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Schedule Job
+                    </Button>
+                  </ScheduleJobDialog>
                 )}
               </div>
             </div>
