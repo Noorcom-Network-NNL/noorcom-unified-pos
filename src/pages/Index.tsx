@@ -23,21 +23,24 @@ import CustomersModule from '@/components/CustomersModule';
 import ReportsModule from '@/components/ReportsModule';
 
 const Index = () => {
-  const { currentUser, logout } = useFirebase();
+  const { currentUser, userProfile, logout, hasPermission } = useFirebase();
   const [activeModule, setActiveModule] = useState('dashboard');
 
   // Show login form if user is not authenticated
-  if (!currentUser) {
+  if (!currentUser || !userProfile) {
     return <LoginForm />;
   }
 
   const modules = [
-    { id: 'dashboard', name: 'Dashboard', icon: Calendar },
-    { id: 'sales', name: 'Sales', icon: ShoppingCart },
-    { id: 'inventory', name: 'Inventory', icon: FileText },
-    { id: 'customers', name: 'Customers', icon: User },
-    { id: 'reports', name: 'Reports', icon: Search },
+    { id: 'dashboard', name: 'Dashboard', icon: Calendar, requiredRole: 'sales' as const },
+    { id: 'sales', name: 'Sales', icon: ShoppingCart, requiredRole: 'sales' as const },
+    { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory' as const },
+    { id: 'customers', name: 'Customers', icon: User, requiredRole: 'sales' as const },
+    { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accounts' as const },
   ];
+
+  // Filter modules based on user permissions
+  const availableModules = modules.filter(module => hasPermission(module.requiredRole));
 
   const renderActiveModule = () => {
     switch (activeModule) {
@@ -78,16 +81,18 @@ const Index = () => {
             <div className="flex items-center space-x-2">
               <User className="h-5 w-5 text-gray-400" />
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{currentUser.email}</p>
-                <p className="text-xs text-gray-500">Administrator</p>
+                <p className="text-sm font-medium text-gray-900">{userProfile.name || currentUser.email}</p>
+                <p className="text-xs text-gray-500 capitalize">{userProfile.role}</p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={logout}>
               <LogOut className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
+            {hasPermission('admin') && (
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -97,7 +102,7 @@ const Index = () => {
         <aside className="w-64 bg-white shadow-sm h-screen sticky top-0">
           <nav className="p-4">
             <div className="space-y-2">
-              {modules.map((module) => {
+              {availableModules.map((module) => {
                 const Icon = module.icon;
                 return (
                   <button
@@ -120,18 +125,24 @@ const Index = () => {
             <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h3>
               <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  New Sale
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <User className="h-4 w-4 mr-2" />
-                  Add Customer
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Invoice
-                </Button>
+                {hasPermission('sales') && (
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    New Sale
+                  </Button>
+                )}
+                {hasPermission('sales') && (
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <User className="h-4 w-4 mr-2" />
+                    Add Customer
+                  </Button>
+                )}
+                {hasPermission('accounts') && (
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send Invoice
+                  </Button>
+                )}
               </div>
             </div>
           </nav>
