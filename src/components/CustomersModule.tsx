@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import CustomerSearch from './CustomerSearch';
 import CustomerList from './CustomerList';
 import CustomerDetails from './CustomerDetails';
+import AddCustomerDialog from './AddCustomerDialog';
 import { Customer } from '@/types/customer';
 
 const CustomersModule = () => {
@@ -69,10 +70,12 @@ const CustomersModule = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Customer Management</h2>
-        <Button>
-          <User className="h-4 w-4 mr-2" />
-          Add New Customer
-        </Button>
+        <AddCustomerDialog>
+          <Button>
+            <User className="h-4 w-4 mr-2" />
+            Add New Customer
+          </Button>
+        </AddCustomerDialog>
       </div>
 
       <CustomerSearch 
@@ -92,10 +95,12 @@ const CustomersModule = () => {
                   : "No customers match your search criteria"
                 }
               </p>
-              <Button>
-                <User className="h-4 w-4 mr-2" />
-                Add First Customer
-              </Button>
+              <AddCustomerDialog>
+                <Button>
+                  <User className="h-4 w-4 mr-2" />
+                  Add First Customer
+                </Button>
+              </AddCustomerDialog>
             </div>
           </CardContent>
         </Card>
