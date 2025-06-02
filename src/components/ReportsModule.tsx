@@ -1,96 +1,129 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  TrendingUp, 
-  Calendar,
-  CreditCard,
-  FileText,
-  User,
-  ShoppingCart,
-  LogOut
-} from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, TrendingUp, DollarSign, ShoppingCart } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { collection, onSnapshot, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import ShiftManagement from './ShiftManagement';
+
+interface SaleData {
+  id: string;
+  amount: number;
+  customerName: string;
+  service: string;
+  date: any; // Firestore Timestamp
+  status: string;
+  paymentMethod: string;
+  createdAt: any; // Firestore Timestamp
+}
 
 const ReportsModule = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
-  const [salesData, setSalesData] = useState({
-    week: { totalSales: 0, totalOrders: 0, avgOrderValue: 0, growth: 0 },
-    month: { totalSales: 0, totalOrders: 0, avgOrderValue: 0, growth: 0 },
-    year: { totalSales: 0, totalOrders: 0, avgOrderValue: 0, growth: 0 }
-  });
-  const [transactions, setTransactions] = useState([]);
+  const [sales, setSales] = useState<SaleData[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('Setting up sales data listeners...');
-    const now = new Date();
+    console.log('Setting up sales listener for reports...');
+    const q = query(collection(db, 'sales'), orderBy('createdAt', 'desc'));
     
-    // Calculate date ranges
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-    const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-
-    // Listen to sales for different periods
-    const setupSalesListener = (startDate, period) => {
-      const q = query(
-        collection(db, 'sales'),
-        where('date', '>=', Timestamp.fromDate(startDate)),
-        orderBy('date', 'desc')
-      );
-
-      return onSnapshot(q, (snapshot) => {
-        const sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log(`Fetched ${period} sales:`, sales);
-        
-        const totalSales = sales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
-        const totalOrders = sales.length;
-        const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-
-        setSalesData(prev => ({
-          ...prev,
-          [period]: {
-            totalSales,
-            totalOrders,
-            avgOrderValue,
-            growth: Math.random() * 20 // Placeholder for growth calculation
-          }
-        }));
-
-        if (period === 'week') {
-          setTransactions(sales.slice(0, 10)); // Show latest 10 transactions
-        }
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const salesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as SaleData[];
+      console.log('Fetched sales for reports:', salesData);
+      setSales(salesData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching sales:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load sales data",
+        variant: "destructive"
       });
-    };
+      setLoading(false);
+    });
 
-    const unsubscribeWeek = setupSalesListener(weekAgo, 'week');
-    const unsubscribeMonth = setupSalesListener(monthAgo, 'month');
-    const unsubscribeYear = setupSalesListener(yearAgo, 'year');
+    return () => unsubscribe();
+  }, [toast]);
 
-    setLoading(false);
+  // Calculate metrics
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const startOfYear = new Date(today.getFullYear(), 0, 1);
 
-    return () => {
-      unsubscribeWeek();
-      unsubscribeMonth();
-      unsubscribeYear();
-    };
-  }, []);
+  const dailySales = sales.filter(sale => {
+    const saleDate = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+    return saleDate >= startOfDay;
+  });
 
-  const currentData = salesData[selectedPeriod];
+  const monthlySales = sales.filter(sale => {
+    const saleDate = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+    return saleDate >= startOfMonth;
+  });
+
+  const yearlySales = sales.filter(sale => {
+    const saleDate = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+    return saleDate >= startOfYear;
+  });
+
+  const dailyRevenue = dailySales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+  const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+  const yearlyRevenue = yearlySales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+
+  // Generate chart data
+  const generateDailyData = () => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+      
+      const daySales = sales.filter(sale => {
+        const saleDate = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+        return saleDate >= dayStart && saleDate < dayEnd;
+      });
+      
+      data.push({
+        name: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        sales: daySales.length,
+        revenue: daySales.reduce((sum, sale) => sum + (sale.amount || 0), 0)
+      });
+    }
+    return data;
+  };
+
+  const generateMonthlyData = () => {
+    const data = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+      
+      const monthSales = sales.filter(sale => {
+        const saleDate = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date(sale.createdAt);
+        return saleDate >= monthStart && saleDate < monthEnd;
+      });
+      
+      data.push({
+        name: date.toLocaleDateString('en-US', { month: 'short' }),
+        sales: monthSales.length,
+        revenue: monthSales.reduce((sum, sale) => sum + (sale.amount || 0), 0)
+      });
+    }
+    return data;
+  };
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Reports & Analytics</h2>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900">Sales Reports</h2>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -104,159 +137,168 @@ const ReportsModule = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Reports & Analytics</h2>
-        <div className="flex space-x-2">
-          <Button 
-            variant={selectedPeriod === 'week' ? 'default' : 'outline'}
-            onClick={() => setSelectedPeriod('week')}
-            size="sm"
-          >
-            This Week
-          </Button>
-          <Button 
-            variant={selectedPeriod === 'month' ? 'default' : 'outline'}
-            onClick={() => setSelectedPeriod('month')}
-            size="sm"
-          >
-            This Month
-          </Button>
-          <Button 
-            variant={selectedPeriod === 'year' ? 'default' : 'outline'}
-            onClick={() => setSelectedPeriod('year')}
-            size="sm"
-          >
-            This Year
-          </Button>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900">Sales Reports</h2>
+        <Badge variant="outline" className="text-green-600 border-green-200">
+          Real-time Data
+        </Badge>
       </div>
 
-      {/* Shift Management */}
-      <ShiftManagement />
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Sales</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  KSh {currentData.totalSales.toLocaleString()}
-                </p>
-                <p className="text-sm text-green-600">+{currentData.growth.toFixed(1)}%</p>
-              </div>
-              <CreditCard className="h-8 w-8 text-blue-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">KSh {dailyRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {dailySales.length} transactions
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {currentData.totalOrders}
-                </p>
-                <p className="text-sm text-green-600">+{Math.floor(Math.random() * 10)} from last period</p>
-              </div>
-              <ShoppingCart className="h-8 w-8 text-green-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Sales</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">KSh {monthlyRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {monthlySales.length} transactions
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  KSh {currentData.avgOrderValue.toLocaleString()}
-                </p>
-                <p className="text-sm text-green-600">+5.2%</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Customers</p>
-                <p className="text-2xl font-bold text-gray-900">247</p>
-                <p className="text-sm text-green-600">+18 new</p>
-              </div>
-              <User className="h-8 w-8 text-orange-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Yearly Sales</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">KSh {yearlyRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {yearlySales.length} transactions
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Transactions */}
+      {/* Charts */}
+      <Tabs defaultValue="daily" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="daily">Daily View</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly View</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="daily" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Sales Volume</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={generateDailyData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="sales" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={generateDailyData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`KSh ${Number(value).toLocaleString()}`, 'Revenue']} />
+                    <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="monthly" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Sales Volume</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={generateMonthlyData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="sales" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={generateMonthlyData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`KSh ${Number(value).toLocaleString()}`, 'Revenue']} />
+                    <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Recent Sales */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <FileText className="h-5 w-5 mr-2" />
-            Recent Transactions
+            <ShoppingCart className="h-5 w-5 mr-2" />
+            Recent Sales
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {transactions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>No transactions found for the selected period</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4">Customer</th>
-                    <th className="text-left py-3 px-4">Service</th>
-                    <th className="text-left py-3 px-4">Amount</th>
-                    <th className="text-left py-3 px-4">Payment Method</th>
-                    <th className="text-left py-3 px-4">Date</th>
-                    <th className="text-left py-3 px-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">{transaction.customerName}</td>
-                      <td className="py-3 px-4">{transaction.service}</td>
-                      <td className="py-3 px-4">KSh {transaction.amount?.toLocaleString()}</td>
-                      <td className="py-3 px-4">{transaction.paymentMethod || 'Cash'}</td>
-                      <td className="py-3 px-4">
-                        {transaction.date?.toDate ? 
-                          transaction.date.toDate().toLocaleDateString() : 
-                          new Date(transaction.date).toLocaleDateString()
-                        }
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge className="bg-green-100 text-green-800">
-                          {transaction.status || 'Completed'}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div className="mt-4 flex justify-between items-center">
-            <p className="text-sm text-gray-600">
-              Showing {transactions.length} of {currentData.totalOrders} transactions
-            </p>
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm">
-                Export Report
-              </Button>
-              <Button variant="outline" size="sm">
-                View All
-              </Button>
-            </div>
+          <div className="space-y-3">
+            {sales.slice(0, 10).map((sale) => (
+              <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <h4 className="font-medium">{sale.customerName}</h4>
+                  <p className="text-sm text-gray-600">{sale.service}</p>
+                  <p className="text-xs text-gray-500">
+                    {sale.createdAt?.toDate ? 
+                      sale.createdAt.toDate().toLocaleString() : 
+                      new Date(sale.createdAt).toLocaleString()
+                    }
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold">KSh {(sale.amount || 0).toLocaleString()}</p>
+                  <Badge variant={sale.status === 'completed' ? 'default' : 'outline'}>
+                    {sale.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
