@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { User, Plus } from 'lucide-react';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { createCustomer } from '@/services/firebaseService';
 
 interface AddCustomerDialogProps {
   children: React.ReactNode;
@@ -49,6 +50,9 @@ const AddCustomerDialog = ({ children }: AddCustomerDialogProps) => {
       };
 
       console.log('Creating customer:', customerData);
+      
+      // Save to Firebase
+      await createCustomer(customerData);
       
       toast({
         title: "Success",
