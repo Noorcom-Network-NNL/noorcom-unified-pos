@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Plus } from 'lucide-react';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useToast } from '@/hooks/use-toast';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface NewSaleDialogProps {
   children: React.ReactNode;
@@ -45,19 +47,21 @@ const NewSaleDialog = ({ children }: NewSaleDialogProps) => {
 
     setLoading(true);
     try {
-      // Create a quick sale record
+      // Create a sale record in Firebase
       const saleData = {
         customerName,
         customerPhone,
         service: selectedService,
         amount: parseFloat(amount),
         status: 'completed',
-        date: new Date().toISOString(),
+        date: Timestamp.fromDate(new Date()),
         createdBy: currentUser?.uid,
-        paymentMethod: 'cash'
+        paymentMethod: 'cash',
+        createdAt: Timestamp.fromDate(new Date())
       };
 
-      console.log('Creating quick sale:', saleData);
+      await addDoc(collection(db, 'sales'), saleData);
+      console.log('Sale created:', saleData);
       
       toast({
         title: "Success",

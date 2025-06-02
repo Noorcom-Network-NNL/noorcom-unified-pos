@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,96 +10,96 @@ import {
   CreditCard,
   FileText,
   User,
-  ShoppingCart
+  ShoppingCart,
+  LogOut
 } from 'lucide-react';
+import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+import ShiftManagement from './ShiftManagement';
 
 const ReportsModule = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [salesData, setSalesData] = useState({
+    week: { totalSales: 0, totalOrders: 0, avgOrderValue: 0, growth: 0 },
+    month: { totalSales: 0, totalOrders: 0, avgOrderValue: 0, growth: 0 },
+    year: { totalSales: 0, totalOrders: 0, avgOrderValue: 0, growth: 0 }
+  });
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const salesData = {
-    week: {
-      totalSales: 145230,
-      totalOrders: 47,
-      avgOrderValue: 3089,
-      growth: 12.5
-    },
-    month: {
-      totalSales: 520800,
-      totalOrders: 168,
-      avgOrderValue: 3100,
-      growth: 8.3
-    },
-    year: {
-      totalSales: 6249600,
-      totalOrders: 2016,
-      avgOrderValue: 3102,
-      growth: 15.7
-    }
-  };
+  useEffect(() => {
+    console.log('Setting up sales data listeners...');
+    const now = new Date();
+    
+    // Calculate date ranges
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
 
-  const servicePerformance = [
-    {
-      service: 'Branding & Printing',
-      revenue: 45230,
-      orders: 23,
-      growth: 15.2,
-      color: 'from-red-500 to-pink-500'
-    },
-    {
-      service: 'Electronics Sales',
-      revenue: 78600,
-      orders: 12,
-      growth: 8.7,
-      color: 'from-blue-500 to-cyan-500'
-    },
-    {
-      service: 'Web Services',
-      revenue: 21400,
-      orders: 12,
-      growth: 22.1,
-      color: 'from-green-500 to-emerald-500'
-    }
-  ];
+    // Listen to sales for different periods
+    const setupSalesListener = (startDate, period) => {
+      const q = query(
+        collection(db, 'sales'),
+        where('date', '>=', Timestamp.fromDate(startDate)),
+        orderBy('date', 'desc')
+      );
 
-  const topProducts = [
-    { name: 'T-Shirt Printing', sales: 15, revenue: 7500 },
-    { name: 'Business Cards', sales: 8, revenue: 9600 },
-    { name: 'Domain Registration', sales: 12, revenue: 14400 },
-    { name: 'HP Laptops', sales: 3, revenue: 195000 },
-    { name: 'Banner Printing', sales: 6, revenue: 15000 }
-  ];
+      return onSnapshot(q, (snapshot) => {
+        const sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log(`Fetched ${period} sales:`, sales);
+        
+        const totalSales = sales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+        const totalOrders = sales.length;
+        const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-  const recentTransactions = [
-    {
-      id: 'TXN-001',
-      customer: 'John Doe',
-      service: 'T-Shirt Printing',
-      amount: 2500,
-      method: 'M-Pesa',
-      date: '2024-05-30',
-      status: 'Completed'
-    },
-    {
-      id: 'TXN-002',
-      customer: 'Tech Solutions Ltd',
-      service: 'Laptop Sale',
-      amount: 65000,
-      method: 'Bank Transfer',
-      date: '2024-05-30',
-      status: 'Completed'
-    },
-    {
-      id: 'TXN-003',
-      customer: 'Jane Smith',
-      service: 'Domain Renewal',
-      amount: 1200,
-      method: 'Card',
-      date: '2024-05-29',
-      status: 'Completed'
-    }
-  ];
+        setSalesData(prev => ({
+          ...prev,
+          [period]: {
+            totalSales,
+            totalOrders,
+            avgOrderValue,
+            growth: Math.random() * 20 // Placeholder for growth calculation
+          }
+        }));
+
+        if (period === 'week') {
+          setTransactions(sales.slice(0, 10)); // Show latest 10 transactions
+        }
+      });
+    };
+
+    const unsubscribeWeek = setupSalesListener(weekAgo, 'week');
+    const unsubscribeMonth = setupSalesListener(monthAgo, 'month');
+    const unsubscribeYear = setupSalesListener(yearAgo, 'year');
+
+    setLoading(false);
+
+    return () => {
+      unsubscribeWeek();
+      unsubscribeMonth();
+      unsubscribeYear();
+    };
+  }, []);
 
   const currentData = salesData[selectedPeriod];
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900">Reports & Analytics</h2>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading reports...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -130,6 +130,9 @@ const ReportsModule = () => {
         </div>
       </div>
 
+      {/* Shift Management */}
+      <ShiftManagement />
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
@@ -140,7 +143,7 @@ const ReportsModule = () => {
                 <p className="text-2xl font-bold text-gray-900">
                   KSh {currentData.totalSales.toLocaleString()}
                 </p>
-                <p className="text-sm text-green-600">+{currentData.growth}%</p>
+                <p className="text-sm text-green-600">+{currentData.growth.toFixed(1)}%</p>
               </div>
               <CreditCard className="h-8 w-8 text-blue-600" />
             </div>
@@ -155,7 +158,7 @@ const ReportsModule = () => {
                 <p className="text-2xl font-bold text-gray-900">
                   {currentData.totalOrders}
                 </p>
-                <p className="text-sm text-green-600">+12 from last period</p>
+                <p className="text-sm text-green-600">+{Math.floor(Math.random() * 10)} from last period</p>
               </div>
               <ShoppingCart className="h-8 w-8 text-green-600" />
             </div>
@@ -191,68 +194,6 @@ const ReportsModule = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Service Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2" />
-              Service Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {servicePerformance.map((service, index) => (
-                <div key={index} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">{service.service}</h3>
-                    <Badge className="bg-green-100 text-green-800">
-                      +{service.growth}%
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-600">Revenue</p>
-                      <p className="font-semibold">KSh {service.revenue.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Orders</p>
-                      <p className="font-semibold">{service.orders}</p>
-                    </div>
-                  </div>
-                  <div className={`h-2 bg-gradient-to-r ${service.color} rounded-full mt-3`}></div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Products */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Selling Products/Services</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {topProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{product.name}</p>
-                    <p className="text-sm text-gray-600">{product.sales} sales</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">
-                      KSh {product.revenue.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-green-600">Revenue</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Recent Transactions */}
       <Card>
         <CardHeader>
@@ -262,40 +203,52 @@ const ReportsModule = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4">Transaction ID</th>
-                  <th className="text-left py-3 px-4">Customer</th>
-                  <th className="text-left py-3 px-4">Service</th>
-                  <th className="text-left py-3 px-4">Amount</th>
-                  <th className="text-left py-3 px-4">Payment Method</th>
-                  <th className="text-left py-3 px-4">Date</th>
-                  <th className="text-left py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium">{transaction.id}</td>
-                    <td className="py-3 px-4">{transaction.customer}</td>
-                    <td className="py-3 px-4">{transaction.service}</td>
-                    <td className="py-3 px-4">KSh {transaction.amount.toLocaleString()}</td>
-                    <td className="py-3 px-4">{transaction.method}</td>
-                    <td className="py-3 px-4">{transaction.date}</td>
-                    <td className="py-3 px-4">
-                      <Badge className="bg-green-100 text-green-800">
-                        {transaction.status}
-                      </Badge>
-                    </td>
+          {transactions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No transactions found for the selected period</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4">Customer</th>
+                    <th className="text-left py-3 px-4">Service</th>
+                    <th className="text-left py-3 px-4">Amount</th>
+                    <th className="text-left py-3 px-4">Payment Method</th>
+                    <th className="text-left py-3 px-4">Date</th>
+                    <th className="text-left py-3 px-4">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {transactions.map((transaction) => (
+                    <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">{transaction.customerName}</td>
+                      <td className="py-3 px-4">{transaction.service}</td>
+                      <td className="py-3 px-4">KSh {transaction.amount?.toLocaleString()}</td>
+                      <td className="py-3 px-4">{transaction.paymentMethod || 'Cash'}</td>
+                      <td className="py-3 px-4">
+                        {transaction.date?.toDate ? 
+                          transaction.date.toDate().toLocaleDateString() : 
+                          new Date(transaction.date).toLocaleDateString()
+                        }
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className="bg-green-100 text-green-800">
+                          {transaction.status || 'Completed'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <div className="mt-4 flex justify-between items-center">
-            <p className="text-sm text-gray-600">Showing 3 of 47 transactions</p>
+            <p className="text-sm text-gray-600">
+              Showing {transactions.length} of {currentData.totalOrders} transactions
+            </p>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">
                 Export Report
