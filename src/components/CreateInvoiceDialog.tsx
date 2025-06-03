@@ -1,39 +1,115 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Download, Printer } from 'lucide-react';
+import { FileText, Download, Printer, Plus, Trash2, User } from 'lucide-react';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useToast } from '@/hooks/use-toast';
-import { createInvoice } from '@/services/firebaseService';
+import { createInvoice, getCustomers } from '@/services/firebaseService';
 import InvoiceTemplate from './InvoiceTemplate';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Customer } from '@/types/customer';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface CreateInvoiceDialogProps {
   children: React.ReactNode;
 }
 
+interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  price: number;
+}
+
 const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
   const [open, setOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [useExistingCustomer, setUseExistingCustomer] = useState(true);
+  const [items, setItems] = useState<InvoiceItem[]>([
+    { id: '1', description: '', quantity: 1, price: 0 }
+  ]);
+  
   const { currentUser } = useFirebase();
   const { toast } = useToast();
   const invoiceRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (open) {
+      // Fetch customers when dialog opens
+      const q = query(collection(db, 'customers'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const customerData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Customer[];
+        setCustomers(customerData);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [open]);
+
+  const addItem = () => {
+    const newItem: InvoiceItem = {
+      id: Date.now().toString(),
+      description: '',
+      quantity: 1,
+      price: 0
+    };
+    setItems([...items, newItem]);
+  };
+
+  const removeItem = (id: string) => {
+    if (items.length > 1) {
+      setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  const updateItem = (id: string, field: keyof InvoiceItem, value: string | number) => {
+    setItems(items.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const getTotalAmount = () => {
+    return items.reduce((total, item) => total + (item.quantity * item.price), 0);
+  };
+
+  const selectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setCustomerName(customer.name);
+    setCustomerEmail(customer.email || '');
+    setCustomerPhone(customer.phone);
+    setShowCustomerDropdown(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !amount || !description) {
+    if (!customerName || !customerPhone) {
       toast({
         title: "Error",
-        description: "Customer name, amount, and description are required",
+        description: "Customer name and phone are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (items.some(item => !item.description || item.price <= 0)) {
+      toast({
+        title: "Error",
+        description: "All items must have description and valid price",
         variant: "destructive"
       });
       return;
@@ -43,8 +119,11 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
     try {
       const newInvoiceData = {
         customerName,
-        amount: parseFloat(amount),
-        description,
+        customerEmail,
+        customerPhone,
+        customerId: selectedCustomer?.id,
+        items,
+        amount: getTotalAmount(),
         dueDate,
         status: 'Pending',
         invoiceNumber: `INV-${Date.now()}`,
@@ -120,7 +199,6 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
   const printThermal = () => {
     if (!invoiceData) return;
 
-    // Create a simplified thermal receipt format
     const thermalContent = `
       ================================
       ${invoiceData.invoiceNumber}
@@ -134,13 +212,20 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
       --------------------------------
       
       Customer: ${invoiceData.customerName}
+      Phone: ${invoiceData.customerPhone}
+      ${invoiceData.customerEmail ? `Email: ${invoiceData.customerEmail}` : ''}
       Date: ${new Date(invoiceData.createdAt).toLocaleDateString()}
       ${invoiceData.dueDate ? `Due: ${new Date(invoiceData.dueDate).toLocaleDateString()}` : ''}
       
       --------------------------------
       
-      ${invoiceData.description}
-      Amount: KSh ${invoiceData.amount.toFixed(2)}
+      Items:
+      ${invoiceData.items.map(item => 
+        `${item.description}\nQty: ${item.quantity} x KSh ${item.price.toFixed(2)} = KSh ${(item.quantity * item.price).toFixed(2)}`
+      ).join('\n\n')}
+      
+      --------------------------------
+      Subtotal: KSh ${invoiceData.amount.toFixed(2)}
       Tax (16%): KSh ${(invoiceData.amount * 0.16).toFixed(2)}
       
       --------------------------------
@@ -152,7 +237,6 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
       ================================
     `;
 
-    // Open print dialog with thermal formatting
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
@@ -191,11 +275,14 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
 
   const resetForm = () => {
     setCustomerName('');
-    setAmount('');
-    setDescription('');
+    setCustomerEmail('');
+    setCustomerPhone('');
     setDueDate('');
+    setItems([{ id: '1', description: '', quantity: 1, price: 0 }]);
+    setSelectedCustomer(null);
     setShowPreview(false);
     setInvoiceData(null);
+    setUseExistingCustomer(true);
     setOpen(false);
   };
 
@@ -204,7 +291,7 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className={showPreview ? "max-w-4xl max-h-[90vh] overflow-y-auto" : "sm:max-w-md"}>
+      <DialogContent className={showPreview ? "max-w-4xl max-h-[90vh] overflow-y-auto" : "sm:max-w-2xl max-h-[90vh] overflow-y-auto"}>
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <FileText className="h-5 w-5 mr-2" />
@@ -214,36 +301,148 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
         
         {!showPreview ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Customer Name *</label>
-              <Input
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Enter customer name"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-700">Amount (KSh) *</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter amount"
-                required
-              />
+            {/* Customer Selection */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700">Customer Information</label>
+              <div className="flex space-x-2">
+                <Button
+                  type="button"
+                  variant={useExistingCustomer ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setUseExistingCustomer(true)}
+                >
+                  Existing Customer
+                </Button>
+                <Button
+                  type="button"
+                  variant={!useExistingCustomer ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setUseExistingCustomer(false)}
+                >
+                  New Customer
+                </Button>
+              </div>
+
+              {useExistingCustomer ? (
+                <div className="relative">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={() => setShowCustomerDropdown(!showCustomerDropdown)}
+                  >
+                    {selectedCustomer ? selectedCustomer.name : "Select Customer"}
+                    <User className="h-4 w-4" />
+                  </Button>
+                  {showCustomerDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      {customers.map((customer) => (
+                        <div
+                          key={customer.id}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b"
+                          onClick={() => selectCustomer(customer)}
+                        >
+                          <div className="font-medium">{customer.name}</div>
+                          <div className="text-sm text-gray-600">{customer.phone}</div>
+                          {customer.email && <div className="text-xs text-gray-500">{customer.email}</div>}
+                        </div>
+                      ))}
+                      {customers.length === 0 && (
+                        <div className="p-3 text-center text-gray-500">No customers found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Customer Name *"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Phone Number *"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Email (optional)"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700">Description *</label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter service description"
-                required
-              />
+            {/* Items Section */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-gray-700">Invoice Items</label>
+                <Button type="button" size="sm" onClick={addItem}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Item
+                </Button>
+              </div>
+              
+              {items.map((item, index) => (
+                <div key={item.id} className="grid grid-cols-12 gap-2 items-center p-3 border rounded">
+                  <div className="col-span-5">
+                    <Input
+                      placeholder="Item description *"
+                      value={item.description}
+                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Input
+                      type="number"
+                      placeholder="Qty"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
+                      required
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <Input
+                      type="number"
+                      placeholder="Price (KSh)"
+                      min="0"
+                      step="0.01"
+                      value={item.price}
+                      onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
+                      required
+                    />
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <span className="text-sm font-medium">
+                      KSh {(item.quantity * item.price).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="col-span-1">
+                    {items.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeItem(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              <div className="text-right">
+                <div className="text-lg font-bold">
+                  Total: KSh {getTotalAmount().toFixed(2)}
+                </div>
+              </div>
             </div>
 
             <div>
@@ -271,7 +470,7 @@ const CreateInvoiceDialog = ({ children }: CreateInvoiceDialogProps) => {
               invoiceNumber={invoiceData.invoiceNumber}
               customerName={invoiceData.customerName}
               amount={invoiceData.amount}
-              description={invoiceData.description}
+              description={invoiceData.items.map(item => `${item.description} (${item.quantity}x)`).join(', ')}
               dueDate={invoiceData.dueDate}
               createdAt={invoiceData.createdAt}
             />

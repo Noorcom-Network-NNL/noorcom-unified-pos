@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,10 +12,19 @@ import {
   FileText,
   User
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { createSale } from '@/services/firebaseService';
+import { useFirebase } from '@/contexts/FirebaseContext';
 
 const SalesModule = () => {
   const [cart, setCart] = useState([]);
   const [activeService, setActiveService] = useState('printing');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const { currentUser } = useFirebase();
 
   const services = {
     printing: [
@@ -49,6 +57,113 @@ const SalesModule = () => {
 
   const getTotalAmount = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const processPayment = async (paymentMethod) => {
+    if (cart.length === 0) {
+      toast({
+        title: "Error",
+        description: "Cart is empty",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!customerName || !customerPhone) {
+      toast({
+        title: "Error", 
+        description: "Customer name and phone are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const saleData = {
+        customerName,
+        customerPhone,
+        customerEmail,
+        items: cart,
+        totalAmount: getTotalAmount(),
+        paymentMethod,
+        status: 'Completed',
+        createdBy: currentUser?.uid,
+        createdAt: new Date().toISOString()
+      };
+
+      await createSale(saleData);
+      
+      toast({
+        title: "Success",
+        description: `Payment processed successfully via ${paymentMethod}`
+      });
+
+      // Reset form
+      setCart([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerEmail('');
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process payment",
+        variant: "destructive"
+      });
+    }
+    setLoading(false);
+  };
+
+  const generateQuote = () => {
+    if (cart.length === 0) {
+      toast({
+        title: "Error",
+        description: "Cart is empty",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!customerName) {
+      toast({
+        title: "Error",
+        description: "Customer name is required for quote",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Generate quote content
+    const quoteContent = `
+QUOTE - ${Date.now()}
+===================
+
+Customer: ${customerName}
+Phone: ${customerPhone}
+Email: ${customerEmail}
+
+Items:
+${cart.map(item => `- ${item.name}: KSh ${item.price.toLocaleString()}`).join('\n')}
+
+Total: KSh ${getTotalAmount().toLocaleString()}
+
+Valid for 30 days from ${new Date().toLocaleDateString()}
+    `;
+
+    // Create and download quote
+    const blob = new Blob([quoteContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Quote-${customerName}-${Date.now()}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Success",
+      description: "Quote generated and downloaded"
+    });
   };
 
   return (
@@ -168,9 +283,21 @@ const SalesModule = () => {
                 <CardTitle className="text-lg">Customer Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Input placeholder="Customer Name" />
-                <Input placeholder="Phone Number" />
-                <Input placeholder="Email (optional)" />
+                <Input 
+                  placeholder="Customer Name *" 
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
+                <Input 
+                  placeholder="Phone Number *" 
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                />
+                <Input 
+                  placeholder="Email (optional)" 
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                />
               </CardContent>
             </Card>
           )}
@@ -181,19 +308,39 @@ const SalesModule = () => {
                 <CardTitle className="text-lg">Payment</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" size="lg">
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  onClick={() => processPayment('Card')}
+                  disabled={loading}
+                >
                   <CreditCard className="h-4 w-4 mr-2" />
-                  Process Payment
+                  {loading ? 'Processing...' : 'Process Payment'}
                 </Button>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => processPayment('Cash')}
+                    disabled={loading}
+                  >
                     Cash
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => processPayment('M-Pesa')}
+                    disabled={loading}
+                  >
                     M-Pesa
                   </Button>
                 </div>
-                <Button variant="outline" className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={generateQuote}
+                  disabled={loading}
+                >
                   <FileText className="h-4 w-4 mr-2" />
                   Generate Quote
                 </Button>
