@@ -1,24 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   ShoppingCart, 
   Search, 
   CreditCard,
   Calendar,
   FileText,
-  User
+  User,
+  UserPlus,
+  Users
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createSale } from '@/services/firebaseService';
+import { createSale, getCustomers, createCustomer } from '@/services/firebaseService';
 import { useFirebase } from '@/contexts/FirebaseContext';
+import { Customer } from '@/types/customer';
 
 const SalesModule = () => {
   const [cart, setCart] = useState([]);
   const [activeService, setActiveService] = useState('printing');
+  const [customerType, setCustomerType] = useState('existing'); // 'existing', 'new', 'walkin'
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -26,6 +33,7 @@ const SalesModule = () => {
   const { toast } = useToast();
   const { currentUser } = useFirebase();
 
+  // ... keep existing code (services object)
   const services = {
     printing: [
       { id: 1, name: 'T-Shirt Printing', price: 500, category: 'Apparel' },
@@ -47,6 +55,20 @@ const SalesModule = () => {
     ]
   };
 
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const loadCustomers = async () => {
+    try {
+      const customersData = await getCustomers();
+      setCustomers(customersData as Customer[]);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    }
+  };
+
+  // ... keep existing code (addToCart, removeFromCart, getTotalAmount functions)
   const addToCart = (item) => {
     setCart([...cart, { ...item, quantity: 1, id: Date.now() }]);
   };
@@ -59,6 +81,72 @@ const SalesModule = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  const handleCustomerTypeChange = (type: string) => {
+    setCustomerType(type);
+    setSelectedCustomer(null);
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerEmail('');
+    
+    if (type === 'walkin') {
+      setCustomerName('Walk-in Customer');
+      setCustomerPhone('N/A');
+    }
+  };
+
+  const handleExistingCustomerSelect = (customerId: string) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setSelectedCustomer(customer);
+      setCustomerName(customer.name);
+      setCustomerPhone(customer.phone);
+      setCustomerEmail(customer.email || '');
+    }
+  };
+
+  const createNewCustomer = async () => {
+    if (!customerName || !customerPhone) {
+      toast({
+        title: "Error",
+        description: "Customer name and phone are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const customerData = {
+        name: customerName,
+        phone: customerPhone,
+        email: customerEmail,
+        type: 'Individual' as const,
+        totalOrders: 0,
+        totalSpent: 0,
+        services: [],
+        createdBy: currentUser?.uid
+      };
+
+      const customerId = await createCustomer(customerData);
+      await loadCustomers(); // Refresh customer list
+      
+      toast({
+        title: "Success",
+        description: "New customer created successfully"
+      });
+
+      // Set the newly created customer as selected
+      const newCustomer = { ...customerData, id: customerId };
+      setSelectedCustomer(newCustomer);
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create customer",
+        variant: "destructive"
+      });
+    }
+  };
+
   const processPayment = async (paymentMethod) => {
     if (cart.length === 0) {
       toast({
@@ -69,10 +157,10 @@ const SalesModule = () => {
       return;
     }
 
-    if (!customerName || !customerPhone) {
+    if (customerType !== 'walkin' && (!customerName || !customerPhone)) {
       toast({
         title: "Error", 
-        description: "Customer name and phone are required",
+        description: "Customer information is required",
         variant: "destructive"
       });
       return;
@@ -81,9 +169,11 @@ const SalesModule = () => {
     setLoading(true);
     try {
       const saleData = {
+        customerId: selectedCustomer?.id || null,
         customerName,
         customerPhone,
         customerEmail,
+        customerType,
         items: cart,
         totalAmount: getTotalAmount(),
         paymentMethod,
@@ -101,6 +191,8 @@ const SalesModule = () => {
 
       // Reset form
       setCart([]);
+      setCustomerType('existing');
+      setSelectedCustomer(null);
       setCustomerName('');
       setCustomerPhone('');
       setCustomerEmail('');
@@ -125,7 +217,7 @@ const SalesModule = () => {
       return;
     }
 
-    if (!customerName) {
+    if (customerType !== 'walkin' && !customerName) {
       toast({
         title: "Error",
         description: "Customer name is required for quote",
@@ -142,6 +234,7 @@ QUOTE - ${Date.now()}
 Customer: ${customerName}
 Phone: ${customerPhone}
 Email: ${customerEmail}
+Customer Type: ${customerType === 'walkin' ? 'Walk-in' : 'Regular'}
 
 Items:
 ${cart.map(item => `- ${item.name}: KSh ${item.price.toLocaleString()}`).join('\n')}
@@ -282,22 +375,102 @@ Valid for 30 days from ${new Date().toLocaleDateString()}
               <CardHeader>
                 <CardTitle className="text-lg">Customer Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Input 
-                  placeholder="Customer Name *" 
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-                <Input 
-                  placeholder="Phone Number *" 
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                />
-                <Input 
-                  placeholder="Email (optional)" 
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                />
+              <CardContent className="space-y-4">
+                {/* Customer Type Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Customer Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      variant={customerType === 'existing' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleCustomerTypeChange('existing')}
+                    >
+                      <Users className="h-4 w-4 mr-1" />
+                      Existing
+                    </Button>
+                    <Button
+                      variant={customerType === 'new' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleCustomerTypeChange('new')}
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      New
+                    </Button>
+                    <Button
+                      variant={customerType === 'walkin' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleCustomerTypeChange('walkin')}
+                    >
+                      <User className="h-4 w-4 mr-1" />
+                      Walk-in
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Customer Selection/Creation */}
+                {customerType === 'existing' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Customer</label>
+                    <Select onValueChange={handleExistingCustomerSelect}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose customer" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border shadow-md z-50">
+                        {customers.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name} - {customer.phone}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {customerType === 'new' && (
+                  <div className="space-y-3">
+                    <Input 
+                      placeholder="Customer Name *" 
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                    />
+                    <Input 
+                      placeholder="Phone Number *" 
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                    />
+                    <Input 
+                      placeholder="Email (optional)" 
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={createNewCustomer}
+                    >
+                      Create Customer
+                    </Button>
+                  </div>
+                )}
+
+                {customerType === 'walkin' && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-700">Walk-in customer selected</p>
+                    <p className="text-xs text-blue-600">No customer information required</p>
+                  </div>
+                )}
+
+                {/* Show selected customer info */}
+                {selectedCustomer && (
+                  <div className="p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm font-medium text-green-800">{selectedCustomer.name}</p>
+                    <p className="text-xs text-green-600">{selectedCustomer.phone}</p>
+                    {selectedCustomer.email && (
+                      <p className="text-xs text-green-600">{selectedCustomer.email}</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
