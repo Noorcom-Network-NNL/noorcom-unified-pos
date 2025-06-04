@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +19,7 @@ import { useFirebase } from '@/contexts/FirebaseContext';
 import LoginForm from '@/components/LoginForm';
 import Dashboard from '@/components/Dashboard';
 import SalesModule from '@/components/SalesModule';
+import ProductsModule from '@/components/ProductsModule';
 import InventoryModule from '@/components/InventoryModule';
 import CustomersModule from '@/components/CustomersModule';
 import ReportsModule from '@/components/ReportsModule';
@@ -38,6 +40,7 @@ const Index = () => {
   const modules = [
     { id: 'dashboard', name: 'Dashboard', icon: Calendar, requiredRole: 'sales' as const },
     { id: 'sales', name: 'Sales', icon: ShoppingCart, requiredRole: 'sales' as const },
+    { id: 'products', name: 'Products', icon: FileText, requiredRole: 'inventory' as const },
     { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory' as const },
     { id: 'customers', name: 'Customers', icon: User, requiredRole: 'sales' as const },
     { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accounts' as const },
@@ -52,6 +55,8 @@ const Index = () => {
         return <Dashboard />;
       case 'sales':
         return <SalesModule />;
+      case 'products':
+        return <ProductsModule />;
       case 'inventory':
         return <InventoryModule />;
       case 'customers':
