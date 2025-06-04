@@ -25,8 +25,9 @@ import {
 interface Sale {
   id: string;
   customerName: string;
-  service: string;
-  amount: number;
+  service?: string;
+  amount?: number;
+  totalAmount?: number;
   date: string;
   status: string;
   paymentMethod: string;
@@ -66,8 +67,8 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({ sales }) => {
                 sales.map((sale) => (
                   <TableRow key={sale.id}>
                     <TableCell>{sale.customerName}</TableCell>
-                    <TableCell>{sale.service}</TableCell>
-                    <TableCell>KSh {sale.amount.toLocaleString()}</TableCell>
+                    <TableCell>{sale.service || 'Multiple Items'}</TableCell>
+                    <TableCell>KSh {(sale.amount || sale.totalAmount || 0).toLocaleString()}</TableCell>
                     <TableCell>{sale.date}</TableCell>
                     <TableCell>
                       <Badge variant={sale.status === 'completed' ? 'default' : 'outline'}>

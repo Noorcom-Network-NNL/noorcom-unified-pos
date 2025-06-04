@@ -23,7 +23,7 @@ interface Sale {
   id: string;
   customerName: string;
   service?: string;
-  totalAmount: number;
+  amount: number;
   date: string;
   status: string;
   paymentMethod: string;
