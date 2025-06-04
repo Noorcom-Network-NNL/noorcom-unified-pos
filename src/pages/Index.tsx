@@ -13,7 +13,8 @@ import {
   FileText,
   Search,
   Mail,
-  LogOut
+  LogOut,
+  Package
 } from 'lucide-react';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import LoginForm from '@/components/LoginForm';
@@ -40,7 +41,7 @@ const Index = () => {
   const modules = [
     { id: 'dashboard', name: 'Dashboard', icon: Calendar, requiredRole: 'sales' as const },
     { id: 'sales', name: 'Sales', icon: ShoppingCart, requiredRole: 'sales' as const },
-    { id: 'products', name: 'Products', icon: FileText, requiredRole: 'inventory' as const },
+    { id: 'products', name: 'Products', icon: Package, requiredRole: 'sales' as const },
     { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory' as const },
     { id: 'customers', name: 'Customers', icon: User, requiredRole: 'sales' as const },
     { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accounts' as const },
