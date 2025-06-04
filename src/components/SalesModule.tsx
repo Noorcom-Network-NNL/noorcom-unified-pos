@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { getCustomers } from '@/services/firebaseService';
+import { getCustomers, getSales } from '@/services/firebaseService';
 import CustomerSelection from './sales/CustomerSelection';
 import SaleCreation from './sales/SaleCreation';
 import RecentSalesTable from './sales/RecentSalesTable';
@@ -22,11 +22,12 @@ interface Customer {
 interface Sale {
   id: string;
   customerName: string;
-  service: string;
-  amount: number;
+  service?: string;
+  totalAmount: number;
   date: string;
   status: string;
   paymentMethod: string;
+  items?: any[];
 }
 
 const SalesModule = () => {
@@ -38,6 +39,7 @@ const SalesModule = () => {
 
   useEffect(() => {
     fetchCustomers();
+    fetchSales();
   }, []);
 
   const fetchCustomers = async () => {
@@ -57,6 +59,20 @@ const SalesModule = () => {
     }
   };
 
+  const fetchSales = async () => {
+    try {
+      const salesData = await getSales();
+      setSales(salesData as Sale[]);
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load sales",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
   };
@@ -64,6 +80,11 @@ const SalesModule = () => {
   const handleCustomerAdded = (customer: Customer) => {
     setCustomers(prev => [...prev, customer]);
     setSelectedCustomer(customer);
+  };
+
+  const handleSaleCreated = () => {
+    // Refresh sales data when a new sale is created
+    fetchSales();
   };
 
   return (
@@ -75,7 +96,10 @@ const SalesModule = () => {
           onCustomerSelect={handleCustomerSelect}
           onCustomerAdded={handleCustomerAdded}
         />
-        <SaleCreation selectedCustomer={selectedCustomer} />
+        <SaleCreation 
+          selectedCustomer={selectedCustomer} 
+          onSaleCreated={handleSaleCreated}
+        />
       </div>
       
       <RecentSalesTable sales={sales} />
