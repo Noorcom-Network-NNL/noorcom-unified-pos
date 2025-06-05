@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { 
   User, 
@@ -6,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export type UserRole = 'admin' | 'manager' | 'cashier' | 'accountant' | 'inventory_clerk';
@@ -38,6 +39,12 @@ const roleHierarchy: Record<UserRole, number> = {
   inventory_clerk: 1  // Inventory management, stock control
 };
 
+// Predefined admin emails
+const ADMIN_EMAILS = [
+  'duba@noorcomnetwork.com',
+  'admin@noorcomnetwork.com'
+];
+
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 export const useFirebase = () => {
@@ -57,6 +64,10 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isAdminEmail = (email: string): boolean => {
+    return ADMIN_EMAILS.includes(email.toLowerCase());
+  };
+
   const fetchUserProfile = async (user: User) => {
     try {
       const userRef = doc(db, 'users', user.uid);
@@ -64,20 +75,42 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
       
       if (userSnap.exists()) {
         const userData = userSnap.data();
+        const userRole = isAdminEmail(user.email || '') ? 'admin' : (userData.role || 'cashier');
+        
+        // Update role if user is admin email but not marked as admin
+        if (isAdminEmail(user.email || '') && userData.role !== 'admin') {
+          await setDoc(userRef, { 
+            ...userData, 
+            role: 'admin',
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+        
         setUserProfile({
           uid: user.uid,
           email: user.email || '',
-          role: userData.role || 'cashier',
+          role: userRole,
           name: userData.name,
-          isActive: userData.isActive,
+          isActive: userData.isActive ?? true,
           department: userData.department
         });
       } else {
         // Create default profile for new users
+        const defaultRole = isAdminEmail(user.email || '') ? 'admin' : 'cashier';
+        const newUserProfile = {
+          email: user.email || '',
+          role: defaultRole,
+          isActive: true,
+          createdAt: new Date().toISOString()
+        };
+        
+        // Save the new user profile to Firestore
+        await setDoc(userRef, newUserProfile);
+        
         setUserProfile({
           uid: user.uid,
           email: user.email || '',
-          role: 'cashier',
+          role: defaultRole,
           isActive: true
         });
       }
