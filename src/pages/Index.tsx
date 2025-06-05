@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,6 +27,7 @@ import NewSaleDialog from '@/components/NewSaleDialog';
 import AddCustomerDialog from '@/components/AddCustomerDialog';
 import CreateInvoiceDialog from '@/components/CreateInvoiceDialog';
 import ScheduleJobDialog from '@/components/ScheduleJobDialog';
+import UserManagementModule from '@/components/UserManagementModule';
 
 const Index = () => {
   const { currentUser, userProfile, logout, hasPermission } = useFirebase();
@@ -45,6 +45,7 @@ const Index = () => {
     { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory_clerk' as const },
     { id: 'customers', name: 'Customers', icon: User, requiredRole: 'cashier' as const },
     { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accountant' as const },
+    { id: 'users', name: 'User Management', icon: Settings, requiredRole: 'admin' as const },
   ];
 
   // Filter modules based on user permissions
@@ -64,6 +65,8 @@ const Index = () => {
         return <CustomersModule />;
       case 'reports':
         return <ReportsModule />;
+      case 'users':
+        return <UserManagementModule />;
       default:
         return <Dashboard />;
     }
