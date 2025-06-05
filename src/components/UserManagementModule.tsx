@@ -54,7 +54,20 @@ const UserManagementModule = () => {
     try {
       setLoading(true);
       const userData = await getUsers();
-      setUsers(userData);
+      
+      // Type cast the DocumentData to SystemUser
+      const typedUsers: SystemUser[] = userData.map((user: any) => ({
+        id: user.id,
+        email: user.email || '',
+        name: user.name,
+        role: user.role || 'cashier',
+        isActive: user.isActive ?? true,
+        department: user.department,
+        createdAt: user.createdAt || new Date().toISOString(),
+        lastLogin: user.lastLogin
+      }));
+      
+      setUsers(typedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
