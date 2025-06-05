@@ -39,12 +39,12 @@ const Index = () => {
   }
 
   const modules = [
-    { id: 'dashboard', name: 'Dashboard', icon: Calendar, requiredRole: 'sales' as const },
-    { id: 'sales', name: 'Sales', icon: ShoppingCart, requiredRole: 'sales' as const },
-    { id: 'products', name: 'Products', icon: Package, requiredRole: 'sales' as const },
-    { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory' as const },
-    { id: 'customers', name: 'Customers', icon: User, requiredRole: 'sales' as const },
-    { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accounts' as const },
+    { id: 'dashboard', name: 'Dashboard', icon: Calendar, requiredRole: 'cashier' as const },
+    { id: 'sales', name: 'Sales', icon: ShoppingCart, requiredRole: 'cashier' as const },
+    { id: 'products', name: 'Products', icon: Package, requiredRole: 'cashier' as const },
+    { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory_clerk' as const },
+    { id: 'customers', name: 'Customers', icon: User, requiredRole: 'cashier' as const },
+    { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accountant' as const },
   ];
 
   // Filter modules based on user permissions
@@ -92,7 +92,7 @@ const Index = () => {
               <User className="h-5 w-5 text-gray-400" />
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">{userProfile.name || currentUser.email}</p>
-                <p className="text-xs text-gray-500 capitalize">{userProfile.role}</p>
+                <p className="text-xs text-gray-500 capitalize">{userProfile.role.replace('_', ' ')}</p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={logout}>
@@ -135,7 +135,7 @@ const Index = () => {
             <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h3>
               <div className="space-y-2">
-                {hasPermission('sales') && (
+                {hasPermission('cashier') && (
                   <NewSaleDialog>
                     <Button variant="outline" size="sm" className="w-full justify-start">
                       <ShoppingCart className="h-4 w-4 mr-2" />
@@ -143,7 +143,7 @@ const Index = () => {
                     </Button>
                   </NewSaleDialog>
                 )}
-                {hasPermission('sales') && (
+                {hasPermission('cashier') && (
                   <AddCustomerDialog>
                     <Button variant="outline" size="sm" className="w-full justify-start">
                       <User className="h-4 w-4 mr-2" />
@@ -151,7 +151,7 @@ const Index = () => {
                     </Button>
                   </AddCustomerDialog>
                 )}
-                {hasPermission('accounts') && (
+                {hasPermission('accountant') && (
                   <CreateInvoiceDialog>
                     <Button variant="outline" size="sm" className="w-full justify-start">
                       <Mail className="h-4 w-4 mr-2" />
@@ -159,7 +159,7 @@ const Index = () => {
                     </Button>
                   </CreateInvoiceDialog>
                 )}
-                {hasPermission('sales') && (
+                {hasPermission('manager') && (
                   <ScheduleJobDialog>
                     <Button variant="outline" size="sm" className="w-full justify-start">
                       <Calendar className="h-4 w-4 mr-2" />

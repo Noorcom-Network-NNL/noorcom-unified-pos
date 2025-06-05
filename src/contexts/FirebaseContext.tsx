@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { 
   User, 
@@ -10,7 +9,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
-export type UserRole = 'admin' | 'manager' | 'sales' | 'inventory' | 'accounts';
+export type UserRole = 'admin' | 'manager' | 'cashier' | 'accountant' | 'inventory_clerk';
 
 interface UserProfile {
   uid: string;
@@ -32,11 +31,11 @@ interface FirebaseContextType {
 }
 
 const roleHierarchy: Record<UserRole, number> = {
-  admin: 5,
-  manager: 4,
-  accounts: 3,
-  inventory: 2,
-  sales: 1
+  admin: 5,           // Full system access
+  manager: 4,         // All operations except system admin
+  accountant: 3,      // Financial reports, invoices, sales analysis
+  cashier: 2,         // Sales, customer management, basic inventory viewing
+  inventory_clerk: 1  // Inventory management, stock control
 };
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
@@ -68,7 +67,7 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
         setUserProfile({
           uid: user.uid,
           email: user.email || '',
-          role: userData.role || 'sales',
+          role: userData.role || 'cashier',
           name: userData.name,
           isActive: userData.isActive,
           department: userData.department
@@ -78,7 +77,7 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
         setUserProfile({
           uid: user.uid,
           email: user.email || '',
-          role: 'sales',
+          role: 'cashier',
           isActive: true
         });
       }
