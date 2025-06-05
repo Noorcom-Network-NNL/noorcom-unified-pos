@@ -37,19 +37,6 @@ const UserManagementModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
 
-  // Check if user has admin permissions
-  if (!hasPermission('admin')) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-          <p className="text-gray-500">You need admin privileges to manage users.</p>
-        </div>
-      </div>
-    );
-  }
-
   const loadUsers = async () => {
     try {
       setLoading(true);
@@ -78,6 +65,19 @@ const UserManagementModule = () => {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  // Check if user has admin permissions AFTER all hooks
+  if (!hasPermission('admin')) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
+          <p className="text-gray-500">You need admin privileges to manage users.</p>
+        </div>
+      </div>
+    );
+  }
 
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
