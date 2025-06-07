@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from "@/hooks/use-toast";
-import { getProducts, updateProduct } from '@/services/firebaseService';
+import { getProducts, updateProduct, getSales } from '@/services/firebaseService';
 import { 
   FileText, 
   Search, 
@@ -14,7 +14,11 @@ import {
   CheckCircle,
   Calendar,
   Package,
-  Plus
+  Plus,
+  Edit,
+  TrendingDown,
+  ShoppingCart,
+  History
 } from 'lucide-react';
 import {
   Dialog,
@@ -24,6 +28,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Product {
   id: string;
@@ -37,19 +51,39 @@ interface Product {
   description?: string;
 }
 
+interface Sale {
+  id: string;
+  customerName: string;
+  items?: { productId: string; productName: string; quantity: number; price: number }[];
+  amount: number;
+  date: string;
+  status: string;
+}
+
 const InventoryModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
   const [restockDialog, setRestockDialog] = useState<{ open: boolean; product: Product | null }>({
     open: false,
     product: null
   });
+  const [updateDialog, setUpdateDialog] = useState<{ open: boolean; product: Product | null }>({
+    open: false,
+    product: null
+  });
   const [restockQuantity, setRestockQuantity] = useState('');
+  const [updateData, setUpdateData] = useState({
+    price: '',
+    minStock: '',
+    description: ''
+  });
   const { toast } = useToast();
 
   useEffect(() => {
     fetchProducts();
+    fetchSales();
   }, []);
 
   const fetchProducts = async () => {
@@ -80,6 +114,15 @@ const InventoryModule = () => {
     }
   };
 
+  const fetchSales = async () => {
+    try {
+      const salesData = await getSales();
+      setSales(salesData as Sale[]);
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+    }
+  };
+
   const handleRestock = async () => {
     if (!restockDialog.product || !restockQuantity) {
       toast({
@@ -96,7 +139,7 @@ const InventoryModule = () => {
       
       toast({
         title: "Success",
-        description: `${restockDialog.product.name} restocked successfully!`,
+        description: `${restockDialog.product.name} restocked successfully! Added ${restockQuantity} ${restockDialog.product.unit}`,
       });
 
       setRestockDialog({ open: false, product: null });
@@ -107,6 +150,35 @@ const InventoryModule = () => {
       toast({
         title: "Error",
         description: "Failed to restock product",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!updateDialog.product) return;
+
+    try {
+      const updates: any = {};
+      if (updateData.price) updates.price = parseFloat(updateData.price);
+      if (updateData.minStock) updates.minStock = parseInt(updateData.minStock);
+      if (updateData.description) updates.description = updateData.description;
+
+      await updateProduct(updateDialog.product.id, updates);
+      
+      toast({
+        title: "Success",
+        description: `${updateDialog.product.name} updated successfully!`,
+      });
+
+      setUpdateDialog({ open: false, product: null });
+      setUpdateData({ price: '', minStock: '', description: '' });
+      fetchProducts();
+    } catch (error) {
+      console.error('Error updating product:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update product",
         variant: "destructive"
       });
     }
@@ -135,6 +207,19 @@ const InventoryModule = () => {
       default:
         return null;
     }
+  };
+
+  const getProductSalesData = (productId: string) => {
+    const productSales = sales.filter(sale => 
+      sale.items?.some(item => item.productId === productId)
+    );
+    
+    const totalSold = productSales.reduce((total, sale) => {
+      const productItem = sale.items?.find(item => item.productId === productId);
+      return total + (productItem?.quantity || 0);
+    }, 0);
+
+    return { salesCount: productSales.length, totalSold };
   };
 
   const lowStockItems = products.filter(item => item.status === 'low' || item.status === 'critical');
@@ -225,86 +310,204 @@ const InventoryModule = () => {
         </CardContent>
       </Card>
 
-      {/* Inventory Tabs */}
-      <Tabs defaultValue={Object.keys(categorizedProducts)[0] || 'all'}>
+      {/* Inventory Management Tabs */}
+      <Tabs defaultValue="inventory" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
-          {Object.keys(categorizedProducts).slice(0, 3).map((category) => (
-            <TabsTrigger key={category} value={category} className="capitalize">
-              {category.replace('_', ' ')}
-            </TabsTrigger>
-          ))}
+          <TabsTrigger value="inventory">Inventory Overview</TabsTrigger>
+          <TabsTrigger value="products">Product Management</TabsTrigger>
+          <TabsTrigger value="sales">Sales Tracking</TabsTrigger>
         </TabsList>
 
-        {Object.entries(categorizedProducts).map(([category, items]) => (
-          <TabsContent key={category} value={category}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="capitalize">{category.replace('_', ' ')} Inventory</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4">Item</th>
-                        <th className="text-left py-3 px-4">Quantity</th>
-                        <th className="text-left py-3 px-4">Min Stock</th>
-                        <th className="text-left py-3 px-4">Unit Price</th>
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredProducts(items).map((item) => (
-                        <tr key={item.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center">
-                              {getStatusIcon(item.status)}
-                              <span className="ml-2 font-medium">{item.name}</span>
+        <TabsContent value="inventory">
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Inventory Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Current Stock</TableHead>
+                      <TableHead>Min Stock</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.filter(product => 
+                      searchTerm === '' || 
+                      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    ).map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div className="flex items-center">
+                            {getStatusIcon(product.status)}
+                            <span className="ml-2 font-medium">{product.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="capitalize">{product.category}</TableCell>
+                        <TableCell>{product.quantity} {product.unit}</TableCell>
+                        <TableCell>{product.minStock || 10} {product.unit}</TableCell>
+                        <TableCell>{getStatusBadge(product.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setRestockDialog({ open: true, product })}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setUpdateDialog({ open: true, product });
+                                setUpdateData({
+                                  price: product.price.toString(),
+                                  minStock: (product.minStock || 10).toString(),
+                                  description: product.description || ''
+                                });
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="products">
+          <Card>
+            <CardHeader>
+              <CardTitle>Product Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Stock</TableHead>
+                      <TableHead>Total Sold</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.filter(product => 
+                      searchTerm === '' || 
+                      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    ).map((product) => {
+                      const salesData = getProductSalesData(product.id);
+                      const totalValue = product.quantity * product.price;
+                      
+                      return (
+                        <TableRow key={product.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-sm text-gray-500">{product.description}</p>
                             </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            {item.quantity} {item.unit}
-                          </td>
-                          <td className="py-3 px-4">
-                            {item.minStock || 10} {item.unit}
-                          </td>
-                          <td className="py-3 px-4">
-                            KSh {item.price.toLocaleString()}
-                          </td>
-                          <td className="py-3 px-4">
-                            {getStatusBadge(item.status)}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>KSh {product.price.toLocaleString()}</TableCell>
+                          <TableCell>{product.quantity} {product.unit}</TableCell>
+                          <TableCell>{salesData.totalSold} {product.unit}</TableCell>
+                          <TableCell>KSh {totalValue.toLocaleString()}</TableCell>
+                          <TableCell>
                             <div className="flex space-x-2">
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => setRestockDialog({ open: true, product: item })}
+                                onClick={() => setRestockDialog({ open: true, product })}
                               >
-                                Restock
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setUpdateDialog({ open: true, product });
+                                  setUpdateData({
+                                    price: product.price.toString(),
+                                    minStock: (product.minStock || 10).toString(),
+                                    description: product.description || ''
+                                  });
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
                               </Button>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {filteredProducts(items).length === 0 && (
-                    <div className="text-center py-8">
-                      <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">No items found in this category</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sales">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Sales & Product Movement</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Products Sold</TableHead>
+                      <TableHead>Total Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sales.slice(0, 20).map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell>
+                          {new Date(sale.date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>{sale.customerName}</TableCell>
+                        <TableCell>
+                          {sale.items?.map(item => (
+                            <div key={item.productId} className="text-sm">
+                              {item.productName} ({item.quantity})
+                            </div>
+                          )) || 'N/A'}
+                        </TableCell>
+                        <TableCell>KSh {sale.amount.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={sale.status === 'completed' ? 'default' : 'secondary'}>
+                            {sale.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -339,6 +542,17 @@ const InventoryModule = () => {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">
+                {sales.length}
+              </p>
+              <p className="text-sm text-gray-600">Total Sales</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Restock Dialog */}
@@ -348,7 +562,7 @@ const InventoryModule = () => {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Restock Item</DialogTitle>
+            <DialogTitle>Add Inventory Stock</DialogTitle>
           </DialogHeader>
           {restockDialog.product && (
             <div className="space-y-4">
@@ -381,9 +595,64 @@ const InventoryModule = () => {
               <div className="flex space-x-2">
                 <Button onClick={handleRestock}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Restock
+                  Add Stock
                 </Button>
                 <Button variant="outline" onClick={() => setRestockDialog({ open: false, product: null })}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Product Dialog */}
+      <Dialog 
+        open={updateDialog.open} 
+        onOpenChange={(open) => setUpdateDialog({ open, product: open ? updateDialog.product : null })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Product Information</DialogTitle>
+          </DialogHeader>
+          {updateDialog.product && (
+            <div className="space-y-4">
+              <div>
+                <Label>Product Name</Label>
+                <Input value={updateDialog.product.name} disabled />
+              </div>
+              <div>
+                <Label>Unit Price (KSh)</Label>
+                <Input
+                  type="number"
+                  placeholder="Enter new price"
+                  value={updateData.price}
+                  onChange={(e) => setUpdateData(prev => ({ ...prev, price: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Minimum Stock Level</Label>
+                <Input
+                  type="number"
+                  placeholder="Enter minimum stock level"
+                  value={updateData.minStock}
+                  onChange={(e) => setUpdateData(prev => ({ ...prev, minStock: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Input
+                  placeholder="Enter product description"
+                  value={updateData.description}
+                  onChange={(e) => setUpdateData(prev => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button onClick={handleUpdateProduct}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Product
+                </Button>
+                <Button variant="outline" onClick={() => setUpdateDialog({ open: false, product: null })}>
                   Cancel
                 </Button>
               </div>
