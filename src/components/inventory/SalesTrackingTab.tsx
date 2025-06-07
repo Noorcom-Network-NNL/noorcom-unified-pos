@@ -51,13 +51,13 @@ const SalesTrackingTab = ({ sales }: SalesTrackingTabProps) => {
                   </TableCell>
                   <TableCell>{sale.customerName}</TableCell>
                   <TableCell>
-                    {sale.items?.map(item => (
-                      <div key={item.productId} className="text-sm">
+                    {sale.items?.map((item, index) => (
+                      <div key={`${item.productId}-${index}`} className="text-sm">
                         {item.productName} ({item.quantity})
                       </div>
                     )) || 'N/A'}
                   </TableCell>
-                  <TableCell>KSh {sale.amount.toLocaleString()}</TableCell>
+                  <TableCell>KSh {(sale.amount || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge variant={sale.status === 'completed' ? 'default' : 'secondary'}>
                       {sale.status}
