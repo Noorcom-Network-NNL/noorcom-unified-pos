@@ -130,6 +130,18 @@ export const updateProduct = async (productId: string, updateData: any) => {
   }
 };
 
+export const deleteProduct = async (productId: string) => {
+  try {
+    const productRef = doc(db, 'products', productId);
+    await deleteDoc(productRef);
+    console.log('Product deleted with ID:', productId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    throw error;
+  }
+};
+
 // Sales operations
 export const createSale = async (saleData: any) => {
   try {
