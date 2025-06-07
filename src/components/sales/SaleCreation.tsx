@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -94,6 +93,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
 
   const addProductToSale = () => {
     console.log('Adding product to sale, selectedProductId:', selectedProductId);
+    console.log('Available products:', products);
     
     if (!selectedProductId) {
       toast({
@@ -128,6 +128,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         return;
       }
       
+      console.log('Updating existing item quantity');
       setSaleItems(items => 
         items.map(item => 
           item.productId === selectedProductId 
@@ -136,6 +137,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         )
       );
     } else {
+      console.log('Adding new item to sale');
       const newItem: SaleItem = {
         productId: product.id,
         productName: product.name,
@@ -148,6 +150,11 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
     
     setSelectedProductId('');
     console.log('Product added successfully');
+    
+    toast({
+      title: "Success",
+      description: `${product.name} added to sale`,
+    });
   };
 
   const updateItemQuantity = (productId: string, newQuantity: number) => {
@@ -252,6 +259,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
   console.log('Rendering SaleCreation component');
   console.log('Products available:', products.length);
   console.log('Selected customer:', selectedCustomer?.name);
+  console.log('Current sale items:', saleItems);
 
   return (
     <Card>
@@ -291,10 +299,13 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
                         ))}
                     </SelectContent>
                   </Select>
-                  <Button onClick={addProductToSale} size="sm">
+                  <Button onClick={addProductToSale} size="sm" disabled={!selectedProductId}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+                {products.length === 0 && (
+                  <p className="text-sm text-gray-500">No products available</p>
+                )}
               </div>
 
               {/* Sale Items */}
