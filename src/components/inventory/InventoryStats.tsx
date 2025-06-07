@@ -4,9 +4,14 @@ import { Card, CardContent } from '@/components/ui/card';
 
 interface Product {
   id: string;
-  quantity: number;
+  name: string;
   price: number;
+  quantity: number;
+  category: string;
+  unit: string;
   status: string;
+  minStock?: number;
+  description?: string;
 }
 
 interface Sale {

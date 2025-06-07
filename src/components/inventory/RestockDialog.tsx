@@ -14,8 +14,13 @@ import { Plus } from 'lucide-react';
 interface Product {
   id: string;
   name: string;
+  price: number;
   quantity: number;
+  category: string;
   unit: string;
+  status: string;
+  minStock?: number;
+  description?: string;
 }
 
 interface RestockDialogProps {
