@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   doc, 
@@ -112,6 +111,21 @@ export const getProducts = async () => {
     return products;
   } catch (error) {
     console.error('Error getting products:', error);
+    throw error;
+  }
+};
+
+export const updateProduct = async (productId: string, updateData: any) => {
+  try {
+    const productRef = doc(db, 'products', productId);
+    await updateDoc(productRef, {
+      ...updateData,
+      updatedAt: new Date().toISOString()
+    });
+    console.log('Product updated with ID:', productId);
+    return productId;
+  } catch (error) {
+    console.error('Error updating product:', error);
     throw error;
   }
 };
