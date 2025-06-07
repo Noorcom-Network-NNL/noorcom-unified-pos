@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,13 +60,16 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
 
   const fetchProducts = async () => {
     try {
-      // Get products from Firebase
+      console.log('Fetching products...');
       const productsData = await getProducts();
-      setProducts(productsData as Product[]);
+      console.log('Products from Firebase:', productsData);
       
-      // If no products in Firebase, use inventory data
-      if (productsData.length === 0) {
-        const inventoryProducts = [
+      if (productsData && productsData.length > 0) {
+        setProducts(productsData as Product[]);
+      } else {
+        // Fallback to sample products if none in Firebase
+        console.log('No products in Firebase, using sample data');
+        const sampleProducts = [
           { id: '1', name: 'Vinyl Rolls', price: 150, quantity: 45, category: 'printing', unit: 'meters', status: 'good' },
           { id: '2', name: 'Printing Ink (Black)', price: 2500, quantity: 8, category: 'printing', unit: 'cartridges', status: 'low' },
           { id: '3', name: 'T-Shirts (Plain)', price: 300, quantity: 120, category: 'printing', unit: 'pieces', status: 'good' },
@@ -73,9 +77,10 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
           { id: '5', name: 'HP Laptops', price: 65000, quantity: 5, category: 'electronics', unit: 'units', status: 'good' },
           { id: '6', name: 'Canon Printers', price: 12500, quantity: 3, category: 'electronics', unit: 'units', status: 'good' },
           { id: '7', name: 'USB Cables', price: 500, quantity: 2, category: 'electronics', unit: 'pieces', status: 'low' },
-          { id: '8', name: 'Phone Cases', price: 800, quantity: 25, category: 'electronics', unit: 'pieces', status: 'good' }
+          { id: '8', name: 'Phone Cases', price: 800, quantity: 25, category: 'electronics', unit: 'pieces', status: 'good' },
+          { id: '9', name: 'Domain Registration', price: 1560, quantity: 1001, category: 'web-services', unit: 'licenses', status: 'good' }
         ];
-        setProducts(inventoryProducts);
+        setProducts(sampleProducts);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -88,6 +93,8 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
   };
 
   const addProductToSale = () => {
+    console.log('Adding product to sale, selectedProductId:', selectedProductId);
+    
     if (!selectedProductId) {
       toast({
         title: "Error",
@@ -98,7 +105,16 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
     }
 
     const product = products.find(p => p.id === selectedProductId);
-    if (!product) return;
+    console.log('Found product:', product);
+    
+    if (!product) {
+      toast({
+        title: "Error",
+        description: "Product not found",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const existingItem = saleItems.find(item => item.productId === selectedProductId);
     
@@ -131,6 +147,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
     }
     
     setSelectedProductId('');
+    console.log('Product added successfully');
   };
 
   const updateItemQuantity = (productId: string, newQuantity: number) => {
@@ -169,6 +186,10 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
   };
 
   const handleCreateSale = async () => {
+    console.log('Creating sale...');
+    console.log('Selected customer:', selectedCustomer);
+    console.log('Sale items:', saleItems);
+    
     if (!selectedCustomer) {
       toast({
         title: "Error",
@@ -200,6 +221,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         createdBy: 'current-user'
       };
 
+      console.log('Sale data to create:', saleData);
       await createSale(saleData);
       
       toast({
@@ -227,6 +249,10 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
     }
   };
 
+  console.log('Rendering SaleCreation component');
+  console.log('Products available:', products.length);
+  console.log('Selected customer:', selectedCustomer?.name);
+
   return (
     <Card>
       <CardHeader>
@@ -248,7 +274,10 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
               <div className="space-y-2">
                 <Label>Add Products</Label>
                 <div className="flex space-x-2">
-                  <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                  <Select value={selectedProductId} onValueChange={(value) => {
+                    console.log('Product selected:', value);
+                    setSelectedProductId(value);
+                  }}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select a product" />
                     </SelectTrigger>
