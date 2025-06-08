@@ -93,7 +93,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
 
   const addProductToSale = () => {
     console.log('Adding product to sale, selectedProductId:', selectedProductId);
-    console.log('Available products:', products);
     
     if (!selectedProductId) {
       toast({
@@ -128,7 +127,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         return;
       }
       
-      console.log('Updating existing item quantity');
       setSaleItems(items => 
         items.map(item => 
           item.productId === selectedProductId 
@@ -137,7 +135,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         )
       );
     } else {
-      console.log('Adding new item to sale');
       const newItem: SaleItem = {
         productId: product.id,
         productName: product.name,
@@ -149,7 +146,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
     }
     
     setSelectedProductId('');
-    console.log('Product added successfully');
     
     toast({
       title: "Success",
@@ -193,10 +189,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
   };
 
   const handleCreateSale = async () => {
-    console.log('Creating sale...');
-    console.log('Selected customer:', selectedCustomer);
-    console.log('Sale items:', saleItems);
-    
     if (!selectedCustomer) {
       toast({
         title: "Error",
@@ -228,7 +220,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         createdBy: 'current-user'
       };
 
-      console.log('Sale data to create:', saleData);
       await createSale(saleData);
       
       toast({
@@ -239,6 +230,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
       // Reset form
       setSaleItems([]);
       setPaymentMethod('cash');
+      setSelectedProductId('');
       
       // Notify parent component
       if (onSaleCreated) {
@@ -255,11 +247,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
       setLoading(false);
     }
   };
-
-  console.log('Rendering SaleCreation component');
-  console.log('Products available:', products.length);
-  console.log('Selected customer:', selectedCustomer?.name);
-  console.log('Current sale items:', saleItems);
 
   return (
     <Card>
@@ -282,10 +269,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
               <div className="space-y-2">
                 <Label>Add Products</Label>
                 <div className="flex space-x-2">
-                  <Select value={selectedProductId} onValueChange={(value) => {
-                    console.log('Product selected:', value);
-                    setSelectedProductId(value);
-                  }}>
+                  <Select value={selectedProductId} onValueChange={setSelectedProductId}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select a product" />
                     </SelectTrigger>
@@ -304,7 +288,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
                   </Button>
                 </div>
                 {products.length === 0 && (
-                  <p className="text-sm text-gray-500">No products available</p>
+                  <p className="text-sm text-gray-500">Loading products...</p>
                 )}
               </div>
 
@@ -383,7 +367,9 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
                 className="w-full" 
                 disabled={loading || saleItems.length === 0}
               >
-                {loading ? 'Creating Sale...' : `Create Sale (KSh ${getTotalAmount().toLocaleString()})`}
+                {loading ? 'Creating Sale...' : 
+                 saleItems.length === 0 ? 'Add Products to Create Sale' : 
+                 `Create Sale (KSh ${getTotalAmount().toLocaleString()})`}
               </Button>
             </>
           ) : (

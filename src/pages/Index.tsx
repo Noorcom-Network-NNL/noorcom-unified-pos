@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,6 +29,7 @@ import AddCustomerDialog from '@/components/AddCustomerDialog';
 import CreateInvoiceDialog from '@/components/CreateInvoiceDialog';
 import ScheduleJobDialog from '@/components/ScheduleJobDialog';
 import UserManagementModule from '@/components/UserManagementModule';
+import SettingsDialog from '@/components/SettingsDialog';
 
 const Index = () => {
   const { currentUser, userProfile, logout, hasPermission } = useFirebase();
@@ -102,9 +104,11 @@ const Index = () => {
               <LogOut className="h-4 w-4" />
             </Button>
             {hasPermission('admin') && (
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4" />
-              </Button>
+              <SettingsDialog>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </SettingsDialog>
             )}
           </div>
         </div>
