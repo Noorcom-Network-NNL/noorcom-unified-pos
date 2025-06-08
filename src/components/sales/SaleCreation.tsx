@@ -1,44 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
 import { getProducts, createSale } from '@/services/firebaseService';
-import { Plus, Minus, ShoppingCart } from 'lucide-react';
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  type: 'Individual' | 'Business';
-  totalOrders: number;
-  totalSpent: number;
-  services: string[];
-  createdBy: string;
-  createdAt: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  category: string;
-  unit: string;
-  status: string;
-}
-
-interface SaleItem {
-  productId: string;
-  productName: string;
-  price: number;
-  quantity: number;
-  total: number;
-}
+import { ShoppingCart } from 'lucide-react';
+import { Customer, Product, SaleItem } from './saleTypes';
+import ProductSelector from './ProductSelector';
+import SaleItemsList from './SaleItemsList';
+import SaleSummary from './SaleSummary';
 
 interface SaleCreationProps {
   selectedCustomer: Customer | null;
@@ -66,7 +35,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
       if (productsData && productsData.length > 0) {
         setProducts(productsData as Product[]);
       } else {
-        // Fallback to sample products if none in Firebase
         console.log('No products in Firebase, using sample data');
         const sampleProducts = [
           { id: '1', name: 'Vinyl Rolls', price: 150, quantity: 45, category: 'printing', unit: 'meters', status: 'good' },
@@ -227,12 +195,10 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         description: `Sale created for ${selectedCustomer.name}! Total: KSh ${getTotalAmount().toLocaleString()}`,
       });
 
-      // Reset form
       setSaleItems([]);
       setPaymentMethod('cash');
       setSelectedProductId('');
       
-      // Notify parent component
       if (onSaleCreated) {
         onSaleCreated();
       }
@@ -265,112 +231,27 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
                 <p className="font-medium">{selectedCustomer.name}</p>
               </div>
 
-              {/* Product Selection */}
-              <div className="space-y-2">
-                <Label>Add Products</Label>
-                <div className="flex space-x-2">
-                  <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select a product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products
-                        .filter(product => product.quantity > 0)
-                        .map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name} - KSh {product.price.toLocaleString()} ({product.quantity} {product.unit} available)
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Button onClick={addProductToSale} size="sm" disabled={!selectedProductId}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                {products.length === 0 && (
-                  <p className="text-sm text-gray-500">Loading products...</p>
-                )}
-              </div>
+              <ProductSelector
+                products={products}
+                selectedProductId={selectedProductId}
+                onProductSelect={setSelectedProductId}
+                onAddProduct={addProductToSale}
+              />
 
-              {/* Sale Items */}
-              {saleItems.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Sale Items</Label>
-                  <div className="border rounded-lg p-3 space-y-2 max-h-60 overflow-y-auto">
-                    {saleItems.map((item) => (
-                      <div key={item.productId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.productName}</p>
-                          <p className="text-sm text-gray-600">KSh {item.price.toLocaleString()} each</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateItemQuantity(item.productId, item.quantity - 1)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center">{item.quantity}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateItemQuantity(item.productId, item.quantity + 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                          <div className="w-20 text-right font-medium">
-                            KSh {item.total.toLocaleString()}
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => removeItem(item.productId)}
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <SaleItemsList
+                saleItems={saleItems}
+                onUpdateQuantity={updateItemQuantity}
+                onRemoveItem={removeItem}
+              />
 
-              {/* Payment Method */}
-              <div className="space-y-2">
-                <Label>Payment Method</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="mobile">Mobile Money</SelectItem>
-                    <SelectItem value="bank">Bank Transfer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Total */}
-              {saleItems.length > 0 && (
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center text-lg font-semibold">
-                    <span>Total:</span>
-                    <span>KSh {getTotalAmount().toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-
-              <Button 
-                onClick={handleCreateSale} 
-                className="w-full" 
-                disabled={loading || saleItems.length === 0}
-              >
-                {loading ? 'Creating Sale...' : 
-                 saleItems.length === 0 ? 'Add Products to Create Sale' : 
-                 `Create Sale (KSh ${getTotalAmount().toLocaleString()})`}
-              </Button>
+              <SaleSummary
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                totalAmount={getTotalAmount()}
+                onCreateSale={handleCreateSale}
+                loading={loading}
+                hasItems={saleItems.length > 0}
+              />
             </>
           ) : (
             <p className="text-gray-500 text-center py-8">
