@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
@@ -182,7 +183,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         createdBy: 'current-user'
       };
 
-      const createdSale = await createSale(saleData);
+      const saleId = await createSale(saleData);
       
       toast({
         title: "Success",
@@ -192,7 +193,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
       // Prepare receipt data
       setLastSaleData({
         ...saleData,
-        saleId: createdSale?.id || 'SALE-' + Date.now()
+        saleId: saleId || 'SALE-' + Date.now()
       });
 
       setSaleItems([]);
