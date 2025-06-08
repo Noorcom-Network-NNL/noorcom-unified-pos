@@ -7,6 +7,10 @@ import { Customer, Product, SaleItem } from './saleTypes';
 import ProductSelector from './ProductSelector';
 import SaleItemsList from './SaleItemsList';
 import SaleSummary from './SaleSummary';
+import ReceiptTemplate from './ReceiptTemplate';
+import { useReceiptPrint } from '@/hooks/useReceiptPrint';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface SaleCreationProps {
   selectedCustomer: Customer | null;
@@ -19,6 +23,9 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastSaleData, setLastSaleData] = useState<any>(null);
+  const { componentRef, handlePrint } = useReceiptPrint();
 
   useEffect(() => {
     fetchProducts();
@@ -175,15 +182,24 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         createdBy: 'current-user'
       };
 
-      await createSale(saleData);
+      const createdSale = await createSale(saleData);
       
       toast({
         title: "Success",
         description: `Sale created for ${selectedCustomer.name}! Total: KSh ${getTotalAmount().toLocaleString()}`,
       });
 
+      // Prepare receipt data
+      setLastSaleData({
+        ...saleData,
+        saleId: createdSale?.id || 'SALE-' + Date.now()
+      });
+
       setSaleItems([]);
       setPaymentMethod('cash');
+      
+      // Show receipt dialog
+      setShowReceipt(true);
       
       if (onSaleCreated) {
         onSaleCreated();
@@ -201,51 +217,78 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <ShoppingCart className="h-5 w-5 mr-2" />
-          Create Sale
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {selectedCustomer ? (
-            <>
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm text-gray-600">Customer:</p>
-                <p className="font-medium text-lg">{selectedCustomer.name}</p>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <ShoppingCart className="h-5 w-5 mr-2" />
+            Create Sale
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {selectedCustomer ? (
+              <>
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Customer:</p>
+                  <p className="font-medium text-lg">{selectedCustomer.name}</p>
+                </div>
+
+                <ProductSelector
+                  products={products}
+                  onAddProduct={addProductToSale}
+                />
+
+                <SaleItemsList
+                  saleItems={saleItems}
+                  onUpdateQuantity={updateItemQuantity}
+                  onRemoveItem={removeItem}
+                />
+
+                <SaleSummary
+                  paymentMethod={paymentMethod}
+                  onPaymentMethodChange={setPaymentMethod}
+                  totalAmount={getTotalAmount()}
+                  onCreateSale={handleCreateSale}
+                  loading={loading}
+                  hasItems={saleItems.length > 0}
+                />
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Please select a customer to create a sale</p>
               </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-              <ProductSelector
-                products={products}
-                onAddProduct={addProductToSale}
+      {/* Receipt Dialog */}
+      <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sale Receipt</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {lastSaleData && (
+              <ReceiptTemplate
+                ref={componentRef}
+                saleData={lastSaleData}
               />
-
-              <SaleItemsList
-                saleItems={saleItems}
-                onUpdateQuantity={updateItemQuantity}
-                onRemoveItem={removeItem}
-              />
-
-              <SaleSummary
-                paymentMethod={paymentMethod}
-                onPaymentMethodChange={setPaymentMethod}
-                totalAmount={getTotalAmount()}
-                onCreateSale={handleCreateSale}
-                loading={loading}
-                hasItems={saleItems.length > 0}
-              />
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Please select a customer to create a sale</p>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={handlePrint} className="flex-1">
+                Print Receipt
+              </Button>
+              <Button variant="outline" onClick={() => setShowReceipt(false)} className="flex-1">
+                Close
+              </Button>
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
