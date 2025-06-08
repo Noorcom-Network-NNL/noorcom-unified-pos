@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,6 +29,7 @@ import CreateInvoiceDialog from '@/components/CreateInvoiceDialog';
 import ScheduleJobDialog from '@/components/ScheduleJobDialog';
 import UserManagementModule from '@/components/UserManagementModule';
 import SettingsDialog from '@/components/SettingsDialog';
+import DealsModule from '@/components/DealsModule';
 
 const Index = () => {
   const { currentUser, userProfile, logout, hasPermission } = useFirebase();
@@ -46,6 +46,7 @@ const Index = () => {
     { id: 'products', name: 'Products', icon: Package, requiredRole: 'cashier' as const },
     { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory_clerk' as const },
     { id: 'customers', name: 'Customers', icon: User, requiredRole: 'cashier' as const },
+    { id: 'deals', name: 'Deal Registration', icon: CreditCard, requiredRole: 'manager' as const },
     { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accountant' as const },
     { id: 'users', name: 'User Management', icon: Settings, requiredRole: 'admin' as const },
   ];
@@ -65,6 +66,8 @@ const Index = () => {
         return <InventoryModule />;
       case 'customers':
         return <CustomersModule />;
+      case 'deals':
+        return <DealsModule />;
       case 'reports':
         return <ReportsModule />;
       case 'users':
