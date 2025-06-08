@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +17,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState('');
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
 
@@ -37,7 +35,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
       } else {
         console.log('No products in Firebase, using sample data');
         const sampleProducts = [
-          { id: '1', name: 'Vinyl Rolls', price: 150, quantity: 45, category: 'printing', unit: 'meters', status: 'good' },
+          { id: '1', name: 'A4 Printing Paper', price: 900, quantity: 51, category: 'printing', unit: 'reams', status: 'good' },
           { id: '2', name: 'Printing Ink (Black)', price: 2500, quantity: 8, category: 'printing', unit: 'cartridges', status: 'low' },
           { id: '3', name: 'T-Shirts (Plain)', price: 300, quantity: 120, category: 'printing', unit: 'pieces', status: 'good' },
           { id: '4', name: 'Business Card Stock', price: 800, quantity: 5, category: 'printing', unit: 'packs', status: 'critical' },
@@ -45,7 +43,7 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
           { id: '6', name: 'Canon Printers', price: 12500, quantity: 3, category: 'electronics', unit: 'units', status: 'good' },
           { id: '7', name: 'USB Cables', price: 500, quantity: 2, category: 'electronics', unit: 'pieces', status: 'low' },
           { id: '8', name: 'Phone Cases', price: 800, quantity: 25, category: 'electronics', unit: 'pieces', status: 'good' },
-          { id: '9', name: 'Domain Registration', price: 1560, quantity: 1001, category: 'web-services', unit: 'licenses', status: 'good' }
+          { id: '9', name: 'Domain Registration', price: 1560, quantity: 100, category: 'web-services', unit: 'licenses', status: 'good' }
         ];
         setProducts(sampleProducts);
       }
@@ -59,21 +57,10 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
     }
   };
 
-  const addProductToSale = () => {
-    console.log('Adding product to sale, selectedProductId:', selectedProductId);
+  const addProductToSale = (productId: string, requestedQuantity: number) => {
+    console.log('Adding product to sale:', productId, 'quantity:', requestedQuantity);
     
-    if (!selectedProductId) {
-      toast({
-        title: "Error",
-        description: "Please select a product",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const product = products.find(p => p.id === selectedProductId);
-    console.log('Found product:', product);
-    
+    const product = products.find(p => p.id === productId);
     if (!product) {
       toast({
         title: "Error",
@@ -83,22 +70,24 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
       return;
     }
 
-    const existingItem = saleItems.find(item => item.productId === selectedProductId);
+    const existingItem = saleItems.find(item => item.productId === productId);
+    const currentQuantityInCart = existingItem ? existingItem.quantity : 0;
+    const totalRequestedQuantity = currentQuantityInCart + requestedQuantity;
+
+    if (totalRequestedQuantity > product.quantity) {
+      toast({
+        title: "Error",
+        description: `Insufficient stock. Available: ${product.quantity}, Requested: ${totalRequestedQuantity}`,
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (existingItem) {
-      if (existingItem.quantity >= product.quantity) {
-        toast({
-          title: "Error",
-          description: "Insufficient stock",
-          variant: "destructive"
-        });
-        return;
-      }
-      
       setSaleItems(items => 
         items.map(item => 
-          item.productId === selectedProductId 
-            ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.price }
+          item.productId === productId 
+            ? { ...item, quantity: totalRequestedQuantity, total: totalRequestedQuantity * item.price }
             : item
         )
       );
@@ -107,17 +96,15 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         productId: product.id,
         productName: product.name,
         price: product.price,
-        quantity: 1,
-        total: product.price
+        quantity: requestedQuantity,
+        total: product.price * requestedQuantity
       };
       setSaleItems(items => [...items, newItem]);
     }
     
-    setSelectedProductId('');
-    
     toast({
       title: "Success",
-      description: `${product.name} added to sale`,
+      description: `${requestedQuantity} x ${product.name} added to sale`,
     });
   };
 
@@ -197,7 +184,6 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
 
       setSaleItems([]);
       setPaymentMethod('cash');
-      setSelectedProductId('');
       
       if (onSaleCreated) {
         onSaleCreated();
@@ -223,18 +209,16 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6">
           {selectedCustomer ? (
             <>
-              <div className="space-y-2">
+              <div className="bg-blue-50 p-3 rounded-lg">
                 <p className="text-sm text-gray-600">Customer:</p>
-                <p className="font-medium">{selectedCustomer.name}</p>
+                <p className="font-medium text-lg">{selectedCustomer.name}</p>
               </div>
 
               <ProductSelector
                 products={products}
-                selectedProductId={selectedProductId}
-                onProductSelect={setSelectedProductId}
                 onAddProduct={addProductToSale}
               />
 
@@ -254,9 +238,10 @@ const SaleCreation: React.FC<SaleCreationProps> = ({ selectedCustomer, onSaleCre
               />
             </>
           ) : (
-            <p className="text-gray-500 text-center py-8">
-              Please select a customer to create a sale
-            </p>
+            <div className="text-center py-12">
+              <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Please select a customer to create a sale</p>
+            </div>
           )}
         </div>
       </CardContent>
