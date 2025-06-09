@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,8 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Settings, Building, MapPin, Plus, Trash2 } from 'lucide-react';
+import { createCompany, getCompanies, updateCompany } from '@/services/firebaseService';
 
 interface CompanyInfo {
+  id?: string;
   name: string;
   address: string;
   phone: string;
@@ -44,6 +45,7 @@ const SettingsDialog = ({ children }: { children: React.ReactNode }) => {
     email: 'info@noorcompos.com',
     taxId: 'TAX123456789',
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const [branches, setBranches] = useState<Branch[]>([
     {
@@ -71,12 +73,66 @@ const SettingsDialog = ({ children }: { children: React.ReactNode }) => {
     manager: '',
   });
 
-  const handleCompanyUpdate = () => {
-    // Here you would typically save to Firebase
-    toast({
-      title: "Success",
-      description: "Company information updated successfully",
-    });
+  // Load company info from Firebase on component mount
+  useEffect(() => {
+    const loadCompanyInfo = async () => {
+      try {
+        const companies = await getCompanies();
+        if (companies && companies.length > 0) {
+          const company = companies[0]; // Assuming single company setup
+          setCompanyInfo({
+            id: company.id,
+            name: company.name || 'NoorcomPOS',
+            address: company.address || '123 Business Street, Nairobi',
+            phone: company.phone || '+254700000000',
+            email: company.email || 'info@noorcompos.com',
+            taxId: company.taxId || 'TAX123456789',
+            logo: company.logo
+          });
+        }
+      } catch (error) {
+        console.error('Error loading company info:', error);
+      }
+    };
+
+    loadCompanyInfo();
+  }, []);
+
+  const handleCompanyUpdate = async () => {
+    if (!companyInfo.name || !companyInfo.email) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (companyInfo.id) {
+        // Update existing company
+        await updateCompany(companyInfo.id, companyInfo);
+      } else {
+        // Create new company
+        const newCompanyId = await createCompany(companyInfo);
+        setCompanyInfo({ ...companyInfo, id: newCompanyId });
+      }
+      
+      toast({
+        title: "Success",
+        description: "Company information updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating company:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update company information",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAddBranch = () => {
@@ -199,8 +255,8 @@ const SettingsDialog = ({ children }: { children: React.ReactNode }) => {
                   </div>
                 </div>
 
-                <Button onClick={handleCompanyUpdate}>
-                  Update Company Information
+                <Button onClick={handleCompanyUpdate} disabled={isLoading}>
+                  {isLoading ? 'Updating...' : 'Update Company Information'}
                 </Button>
               </CardContent>
             </Card>
