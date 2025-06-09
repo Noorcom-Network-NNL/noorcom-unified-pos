@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { getCustomers, getSales } from '@/services/firebaseService';
+import { getCustomers } from '@/services/customerService';
+import { getSales } from '@/services/salesService';
 import CustomerSelection from './sales/CustomerSelection';
 import SaleCreation from './sales/SaleCreation';
 import RecentSalesTable from './sales/RecentSalesTable';

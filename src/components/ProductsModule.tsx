@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
-import { getProducts, createProduct, updateProduct, deleteProduct } from '@/services/firebaseService';
+import { getProducts, createProduct, updateProduct, deleteProduct } from '@/services/productService';
 import { Plus, Package, Edit, Trash2 } from 'lucide-react';
 import {
   Table,

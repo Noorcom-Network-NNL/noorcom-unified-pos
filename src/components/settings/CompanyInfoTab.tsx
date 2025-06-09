@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { Building } from 'lucide-react';
-import { createCompany, getCompanies, updateCompany } from '@/services/firebaseService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { Building2 } from 'lucide-react';
+import { getCompanies, createCompany, updateCompany } from '@/services/companyService';
 
 interface CompanyInfo {
   id?: string;
@@ -95,7 +94,7 @@ const CompanyInfoTab = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center">
-          <Building className="h-5 w-5 mr-2" />
+          <Building2 className="h-5 w-5 mr-2" />
           Company Information
         </CardTitle>
       </CardHeader>
