@@ -28,12 +28,15 @@ import {
 } from 'lucide-react';
 import { Tender, TenderFormData } from '@/types/deal';
 import { createTender, getTenders } from '@/services/firebaseService';
+import TenderDetailsDialog from './TenderDetailsDialog';
 
 const DealsModule = () => {
   const { toast } = useToast();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [formData, setFormData] = useState<TenderFormData>({
     name: '',
     amount: 0,
@@ -117,6 +120,11 @@ const DealsModule = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewDetails = (tender: Tender) => {
+    setSelectedTender(tender);
+    setShowDetailsDialog(true);
   };
 
   const getStatusBadge = (status: string, type: 'submission' | 'payment') => {
@@ -344,7 +352,11 @@ const DealsModule = () => {
                       {tender.submissionDate ? new Date(tender.submissionDate).toLocaleDateString() : 'Not set'}
                     </TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewDetails(tender)}
+                      >
                         View Details
                       </Button>
                     </TableCell>
@@ -363,6 +375,14 @@ const DealsModule = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Tender Details Dialog */}
+      <TenderDetailsDialog
+        tender={selectedTender}
+        open={showDetailsDialog}
+        onOpenChange={setShowDetailsDialog}
+        onUpdate={fetchTenders}
+      />
     </div>
   );
 };
