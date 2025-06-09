@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,11 +14,15 @@ import {
   Search,
   Mail,
   LogOut,
-  Package
+  Package,
+  Building2
 } from 'lucide-react';
 import { useFirebase } from '@/contexts/FirebaseContext';
+import { useTenant } from '@/contexts/TenantContext';
 import LoginForm from '@/components/LoginForm';
 import Dashboard from '@/components/Dashboard';
+import TenantDashboard from '@/components/TenantDashboard';
+import SubscriptionManager from '@/components/SubscriptionManager';
 import SalesModule from '@/components/SalesModule';
 import ProductsModule from '@/components/ProductsModule';
 import InventoryModule from '@/components/InventoryModule';
@@ -33,6 +38,7 @@ import DealsModule from '@/components/DealsModule';
 
 const Index = () => {
   const { currentUser, userProfile, logout, hasPermission } = useFirebase();
+  const { currentTenant } = useTenant();
   const [activeModule, setActiveModule] = useState('dashboard');
 
   // Show login form if user is not authenticated
@@ -42,6 +48,8 @@ const Index = () => {
 
   const modules = [
     { id: 'dashboard', name: 'Dashboard', icon: Calendar, requiredRole: 'cashier' as const },
+    { id: 'tenant', name: 'Business Overview', icon: Building2, requiredRole: 'admin' as const },
+    { id: 'subscription', name: 'Subscription', icon: CreditCard, requiredRole: 'admin' as const },
     { id: 'sales', name: 'Sales', icon: ShoppingCart, requiredRole: 'cashier' as const },
     { id: 'products', name: 'Products', icon: Package, requiredRole: 'cashier' as const },
     { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory_clerk' as const },
@@ -51,13 +59,32 @@ const Index = () => {
     { id: 'users', name: 'User Management', icon: Settings, requiredRole: 'admin' as const },
   ];
 
-  // Filter modules based on user permissions
-  const availableModules = modules.filter(module => hasPermission(module.requiredRole));
+  // Filter modules based on user permissions and tenant features
+  const availableModules = modules.filter(module => {
+    const hasRolePermission = hasPermission(module.requiredRole);
+    
+    // Check tenant feature access for certain modules
+    if (module.id === 'users' && !currentTenant?.features.includes('user_management')) {
+      return false;
+    }
+    if (module.id === 'reports' && !currentTenant?.features.includes('advanced_reports')) {
+      return false;
+    }
+    if (module.id === 'inventory' && !currentTenant?.features.includes('inventory_management')) {
+      return false;
+    }
+    
+    return hasRolePermission;
+  });
 
   const renderActiveModule = () => {
     switch (activeModule) {
       case 'dashboard':
         return <Dashboard />;
+      case 'tenant':
+        return <TenantDashboard />;
+      case 'subscription':
+        return <SubscriptionManager />;
       case 'sales':
         return <SalesModule />;
       case 'products':
@@ -88,13 +115,19 @@ const Index = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">NoorcomPOS</h1>
-              <p className="text-sm text-gray-500">Multi-Service Point of Sale</p>
+              <p className="text-sm text-gray-500">
+                {currentTenant?.name || 'Multi-Service Point of Sale'}
+              </p>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
-            <Badge variant="outline" className="text-green-600 border-green-200">
-              Online
+            <Badge variant="outline" className={
+              currentTenant?.subscriptionStatus === 'active' 
+                ? "text-green-600 border-green-200" 
+                : "text-blue-600 border-blue-200"
+            }>
+              {currentTenant?.subscriptionTier.toUpperCase()}
             </Badge>
             <div className="flex items-center space-x-2">
               <User className="h-5 w-5 text-gray-400" />

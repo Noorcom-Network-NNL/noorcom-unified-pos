@@ -19,6 +19,7 @@ interface UserProfile {
   name?: string;
   isActive: boolean;
   department?: string;
+  tenantId: string; // Added for multi-tenancy
 }
 
 interface FirebaseContextType {
@@ -68,6 +69,12 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
     return ADMIN_EMAILS.includes(email.toLowerCase());
   };
 
+  const getTenantIdFromEmail = (email: string): string => {
+    // Extract tenant ID from email domain or use a default
+    const domain = email.split('@')[1];
+    return `tenant_${domain.replace('.', '_')}`;
+  };
+
   const fetchUserProfile = async (user: User) => {
     try {
       const userRef = doc(db, 'users', user.uid);
@@ -76,12 +83,14 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         const userRole = isAdminEmail(user.email || '') ? 'admin' : (userData.role || 'cashier');
+        const tenantId = userData.tenantId || getTenantIdFromEmail(user.email || '');
         
-        // Update role if user is admin email but not marked as admin
-        if (isAdminEmail(user.email || '') && userData.role !== 'admin') {
+        // Update role and tenant if user is admin email but not marked as admin
+        if (isAdminEmail(user.email || '') && (userData.role !== 'admin' || !userData.tenantId)) {
           await setDoc(userRef, { 
             ...userData, 
             role: 'admin',
+            tenantId,
             updatedAt: new Date().toISOString()
           }, { merge: true });
         }
@@ -92,15 +101,18 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
           role: userRole,
           name: userData.name,
           isActive: userData.isActive ?? true,
-          department: userData.department
+          department: userData.department,
+          tenantId
         });
       } else {
         // Create default profile for new users
         const defaultRole = isAdminEmail(user.email || '') ? 'admin' : 'cashier';
+        const tenantId = getTenantIdFromEmail(user.email || '');
         const newUserProfile = {
           email: user.email || '',
           role: defaultRole,
           isActive: true,
+          tenantId,
           createdAt: new Date().toISOString()
         };
         
@@ -111,7 +123,8 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
           uid: user.uid,
           email: user.email || '',
           role: defaultRole,
-          isActive: true
+          isActive: true,
+          tenantId
         });
       }
     } catch (error) {
