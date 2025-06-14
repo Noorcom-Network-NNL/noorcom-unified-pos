@@ -1,3 +1,4 @@
+
 import { collection, addDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { processMpesaPayment, queryMpesaPaymentStatus } from './mpesaService';
@@ -19,7 +20,7 @@ export interface PaymentResponse {
   error?: string;
 }
 
-// PayPal Integration (keeping existing mock implementation)
+// PayPal Integration (mock implementation)
 export const processPayPalPayment = async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
   try {
     console.log('Processing PayPal payment:', paymentData);
@@ -32,8 +33,7 @@ export const processPayPalPayment = async (paymentData: PaymentRequest): Promise
       createdAt: Timestamp.fromDate(new Date())
     });
 
-    // In a real implementation, you would make an API call to PayPal
-    // For now, we'll simulate the PayPal flow
+    // Simulate PayPal flow
     const mockPayPalResponse = {
       id: `PAYPAL_${Date.now()}`,
       status: 'PENDING',
@@ -64,10 +64,10 @@ export const processPayPalPayment = async (paymentData: PaymentRequest): Promise
   }
 };
 
-// M-Pesa Integration using live API
-export const processMpesaPayment_Live = async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
+// M-Pesa Integration using Firebase
+export const processMpesaPayment_Firebase = async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
   try {
-    console.log('Processing live M-Pesa payment:', paymentData);
+    console.log('Processing M-Pesa payment with Firebase:', paymentData);
     
     if (!paymentData.customerPhone) {
       return {
@@ -110,11 +110,10 @@ export const verifyPayment = async (transactionId: string, provider: 'paypal' | 
     console.log(`Verifying ${provider} payment:`, transactionId);
     
     if (provider === 'mpesa') {
-      // Use live M-Pesa query for verification
       return await queryMpesaPaymentStatus(transactionId);
     } else {
-      // For PayPal, simulate verification (implement PayPal verification API)
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // For PayPal, simulate verification
+      await new Promise(resolve => setTimeout(resolve, 2000));
       return Math.random() > 0.2; // 80% success rate for demo
     }
   } catch (error) {
@@ -123,5 +122,5 @@ export const verifyPayment = async (transactionId: string, provider: 'paypal' | 
   }
 };
 
-// Export the live M-Pesa function as the main one
-export { processMpesaPayment_Live as processMpesaPayment };
+// Export the Firebase M-Pesa function as the main one
+export { processMpesaPayment_Firebase as processMpesaPayment };
