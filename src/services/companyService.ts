@@ -9,11 +9,23 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+// Helper function to remove undefined values from objects
+const removeUndefinedValues = (obj: any) => {
+  const cleaned: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      cleaned[key] = obj[key];
+    }
+  });
+  return cleaned;
+};
+
 // Company operations
 export const createCompany = async (companyData: any) => {
   try {
+    const cleanedData = removeUndefinedValues(companyData);
     const docRef = await addDoc(collection(db, 'companies'), {
-      ...companyData,
+      ...cleanedData,
       createdAt: new Date().toISOString()
     });
     console.log('Company created with ID:', docRef.id);
@@ -40,9 +52,10 @@ export const getCompanies = async () => {
 
 export const updateCompany = async (companyId: string, updateData: any) => {
   try {
+    const cleanedData = removeUndefinedValues(updateData);
     const companyRef = doc(db, 'companies', companyId);
     await updateDoc(companyRef, {
-      ...updateData,
+      ...cleanedData,
       updatedAt: new Date().toISOString()
     });
     console.log('Company updated with ID:', companyId);
