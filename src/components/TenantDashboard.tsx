@@ -66,6 +66,8 @@ const TenantDashboard = () => {
     return daysLeft <= 7 && daysLeft > 0;
   };
 
+  const currency = currentTenant.settings?.currency || 'KSh';
+
   return (
     <div className="space-y-6">
       {/* Tenant Header */}
@@ -121,7 +123,7 @@ const TenantDashboard = () => {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${analytics.totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{currency} {analytics.totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-gray-500">
               +{analytics.growthRate}% from last month
             </p>

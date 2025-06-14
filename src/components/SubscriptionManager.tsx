@@ -33,11 +33,13 @@ const SubscriptionManager = () => {
     );
   }
 
+  const currency = currentTenant.settings?.currency || 'KSh';
+
   const plans = [
     {
       tier: 'free' as SubscriptionTier,
       name: 'Free',
-      price: '$0',
+      price: `${currency} 0`,
       period: 'forever',
       icon: Star,
       features: [
@@ -52,7 +54,7 @@ const SubscriptionManager = () => {
     {
       tier: 'basic' as SubscriptionTier,
       name: 'Basic',
-      price: '$29',
+      price: `${currency} 2,900`,
       period: 'per month',
       icon: Zap,
       features: [
@@ -68,7 +70,7 @@ const SubscriptionManager = () => {
     {
       tier: 'professional' as SubscriptionTier,
       name: 'Professional',
-      price: '$99',
+      price: `${currency} 9,900`,
       period: 'per month',
       icon: Crown,
       popular: true,
