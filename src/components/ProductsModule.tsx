@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +35,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useFirebase } from '@/contexts/FirebaseContext';
+import { getCategories, type Category } from '@/services/categoryService';
+import CategoryManagement from '@/components/CategoryManagement';
 
 interface Product {
   id: string;
@@ -75,106 +76,123 @@ const ProductFormComponent = React.memo<ProductFormProps>(({
   onCancel, 
   loading, 
   isEdit = false 
-}) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <div className="space-y-2">
-      <Label htmlFor="name">Product Name *</Label>
-      <Input
-        id="name"
-        value={formData.name}
-        onChange={(e) => onInputChange('name', e.target.value)}
-        placeholder="Enter product name"
-      />
-    </div>
+}) => {
+  const [categories, setCategories] = useState<Category[]>([]);
 
-    <div className="space-y-2">
-      <Label htmlFor="price">Price (KSh) *</Label>
-      <Input
-        id="price"
-        type="number"
-        value={formData.price}
-        onChange={(e) => onInputChange('price', e.target.value)}
-        placeholder="0.00"
-      />
-    </div>
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
-    <div className="space-y-2">
-      <Label htmlFor="quantity">Quantity *</Label>
-      <Input
-        id="quantity"
-        type="number"
-        value={formData.quantity}
-        onChange={(e) => onInputChange('quantity', e.target.value)}
-        placeholder="0"
-      />
-    </div>
+  const fetchCategories = async () => {
+    try {
+      const categoriesData = await getCategories();
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
-    <div className="space-y-2">
-      <Label htmlFor="category">Category *</Label>
-      <Select value={formData.category} onValueChange={(value) => onInputChange('category', value)}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select category" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="printing">Printing Materials</SelectItem>
-          <SelectItem value="electronics">Electronics</SelectItem>
-          <SelectItem value="services">Service Credits</SelectItem>
-          <SelectItem value="accessories">Accessories</SelectItem>
-          <SelectItem value="consumables">Consumables</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Product Name *</Label>
+        <Input
+          id="name"
+          value={formData.name}
+          onChange={(e) => onInputChange('name', e.target.value)}
+          placeholder="Enter product name"
+        />
+      </div>
 
-    <div className="space-y-2">
-      <Label htmlFor="unit">Unit *</Label>
-      <Select value={formData.unit} onValueChange={(value) => onInputChange('unit', value)}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select unit" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="pieces">Pieces</SelectItem>
-          <SelectItem value="meters">Meters</SelectItem>
-          <SelectItem value="units">Units</SelectItem>
-          <SelectItem value="packs">Packs</SelectItem>
-          <SelectItem value="cartridges">Cartridges</SelectItem>
-          <SelectItem value="credits">Credits</SelectItem>
-          <SelectItem value="licenses">Licenses</SelectItem>
-          <SelectItem value="GB">GB</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
+      <div className="space-y-2">
+        <Label htmlFor="price">Price (KSh) *</Label>
+        <Input
+          id="price"
+          type="number"
+          value={formData.price}
+          onChange={(e) => onInputChange('price', e.target.value)}
+          placeholder="0.00"
+        />
+      </div>
 
-    <div className="space-y-2">
-      <Label htmlFor="minStock">Minimum Stock</Label>
-      <Input
-        id="minStock"
-        type="number"
-        value={formData.minStock}
-        onChange={(e) => onInputChange('minStock', e.target.value)}
-        placeholder="10"
-      />
-    </div>
+      <div className="space-y-2">
+        <Label htmlFor="quantity">Quantity *</Label>
+        <Input
+          id="quantity"
+          type="number"
+          value={formData.quantity}
+          onChange={(e) => onInputChange('quantity', e.target.value)}
+          placeholder="0"
+        />
+      </div>
 
-    <div className="space-y-2 md:col-span-2 lg:col-span-3">
-      <Label htmlFor="description">Description</Label>
-      <Input
-        id="description"
-        value={formData.description}
-        onChange={(e) => onInputChange('description', e.target.value)}
-        placeholder="Optional product description"
-      />
-    </div>
+      <div className="space-y-2">
+        <Label htmlFor="category">Category *</Label>
+        <Select value={formData.category} onValueChange={(value) => onInputChange('category', value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((category) => (
+              <SelectItem key={category.id} value={category.value}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-    <div className="flex space-x-2 mt-6 md:col-span-2 lg:col-span-3">
-      <Button onClick={onSubmit} disabled={loading}>
-        {loading ? (isEdit ? 'Updating...' : 'Adding...') : (isEdit ? 'Update Product' : 'Add Product')}
-      </Button>
-      <Button variant="outline" onClick={onCancel}>
-        Cancel
-      </Button>
+      <div className="space-y-2">
+        <Label htmlFor="unit">Unit *</Label>
+        <Select value={formData.unit} onValueChange={(value) => onInputChange('unit', value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select unit" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pieces">Pieces</SelectItem>
+            <SelectItem value="meters">Meters</SelectItem>
+            <SelectItem value="units">Units</SelectItem>
+            <SelectItem value="packs">Packs</SelectItem>
+            <SelectItem value="cartridges">Cartridges</SelectItem>
+            <SelectItem value="credits">Credits</SelectItem>
+            <SelectItem value="licenses">Licenses</SelectItem>
+            <SelectItem value="GB">GB</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="minStock">Minimum Stock</Label>
+        <Input
+          id="minStock"
+          type="number"
+          value={formData.minStock}
+          onChange={(e) => onInputChange('minStock', e.target.value)}
+          placeholder="10"
+        />
+      </div>
+
+      <div className="space-y-2 md:col-span-2 lg:col-span-3">
+        <Label htmlFor="description">Description</Label>
+        <Input
+          id="description"
+          value={formData.description}
+          onChange={(e) => onInputChange('description', e.target.value)}
+          placeholder="Optional product description"
+        />
+      </div>
+
+      <div className="flex space-x-2 mt-6 md:col-span-2 lg:col-span-3">
+        <Button onClick={onSubmit} disabled={loading}>
+          {loading ? (isEdit ? 'Updating...' : 'Adding...') : (isEdit ? 'Update Product' : 'Add Product')}
+        </Button>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
     </div>
-  </div>
-));
+  );
+});
 
 ProductFormComponent.displayName = 'ProductFormComponent';
 
@@ -188,6 +206,7 @@ const ProductsModule = () => {
     open: false,
     product: null
   });
+  const [showCategoryManagement, setShowCategoryManagement] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useFirebase();
 
@@ -399,13 +418,26 @@ const ProductsModule = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Product Management</h2>
-        {hasPermission('admin') && (
-          <Button onClick={() => setShowAddForm(!showAddForm)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Button>
-        )}
+        <div className="flex space-x-2">
+          {hasPermission('admin') && (
+            <>
+              <Button variant="outline" onClick={() => setShowCategoryManagement(!showCategoryManagement)}>
+                <Package className="h-4 w-4 mr-2" />
+                Manage Categories
+              </Button>
+              <Button onClick={() => setShowAddForm(!showAddForm)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Category Management */}
+      {showCategoryManagement && hasPermission('admin') && (
+        <CategoryManagement />
+      )}
 
       {/* Add Product Form */}
       {showAddForm && hasPermission('admin') && (

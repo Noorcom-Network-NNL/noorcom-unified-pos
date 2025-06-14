@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   getDocs
@@ -29,3 +28,4 @@ export * from './orderService';
 export * from './serviceManagementService';
 export * from './financialService';
 export * from './tenderService';
+export * from './categoryService';
