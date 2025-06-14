@@ -82,8 +82,8 @@ const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(
                 <span className="flex-1">{item.productName}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>{item.quantity} x KSh {item.price.toLocaleString()}</span>
-                <span>KSh {item.total.toLocaleString()}</span>
+                <span>{item.quantity} x KES {item.price.toLocaleString()}</span>
+                <span>KES {item.total.toLocaleString()}</span>
               </div>
             </div>
           ))}
@@ -93,15 +93,15 @@ const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(
         <div className="border-t border-dashed pt-2">
           <div className="flex justify-between text-sm">
             <span>Subtotal:</span>
-            <span>KSh {subtotal.toLocaleString()}</span>
+            <span>KES {subtotal.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>Tax (16%):</span>
-            <span>KSh {tax.toLocaleString()}</span>
+            <span>KES {tax.toLocaleString()}</span>
           </div>
           <div className="flex justify-between font-bold border-t border-dashed pt-1 mt-1">
             <span>TOTAL:</span>
-            <span>KSh {total.toLocaleString()}</span>
+            <span>KES {total.toLocaleString()}</span>
           </div>
         </div>
 

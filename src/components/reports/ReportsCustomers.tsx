@@ -100,7 +100,7 @@ const ReportsCustomers: React.FC<ReportsCustomersProps> = ({ customers, sales })
                     <p className="text-sm text-gray-600">{customer.phone}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">KSh {(Number(customer.totalSpent) || 0).toLocaleString()}</p>
+                    <p className="font-semibold">KES {(Number(customer.totalSpent) || 0).toLocaleString()}</p>
                     <p className="text-sm text-gray-600">{customer.totalOrders || 0} orders</p>
                   </div>
                 </div>

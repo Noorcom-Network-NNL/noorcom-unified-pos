@@ -90,8 +90,8 @@ const InvoiceTemplate = React.forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                 <tr key={index}>
                   <td className="border border-gray-300 px-4 py-2">{item.description}</td>
                   <td className="border border-gray-300 px-4 py-2 text-center">{item.quantity}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">KSh {item.unitPrice.toFixed(2)}</td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">KSh {item.total.toFixed(2)}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">KES {item.unitPrice.toFixed(2)}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">KES {item.total.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -103,15 +103,15 @@ const InvoiceTemplate = React.forwardRef<HTMLDivElement, InvoiceTemplateProps>(
           <div className="w-64">
             <div className="flex justify-between py-2 border-t border-gray-300">
               <span className="font-semibold">Subtotal:</span>
-              <span>KSh {amount.toFixed(2)}</span>
+              <span>KES {amount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-2 border-t border-gray-300">
               <span className="font-semibold">Tax (16%):</span>
-              <span>KSh {(amount * 0.16).toFixed(2)}</span>
+              <span>KES {(amount * 0.16).toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-2 border-t-2 border-gray-800 font-bold text-lg">
               <span>Total:</span>
-              <span>KSh {(amount * 1.16).toFixed(2)}</span>
+              <span>KES {(amount * 1.16).toFixed(2)}</span>
             </div>
           </div>
         </div>

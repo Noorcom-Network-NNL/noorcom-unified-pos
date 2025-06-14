@@ -33,7 +33,7 @@ const SubscriptionManager = () => {
     );
   }
 
-  const currency = currentTenant.settings?.currency || 'KSh';
+  const currency = currentTenant.settings?.currency || 'KES';
 
   const plans = [
     {

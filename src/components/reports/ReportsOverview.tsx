@@ -67,7 +67,7 @@ const ReportsOverview: React.FC<ReportsOverviewProps> = ({ sales, filteredSales 
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(value) => [`KSh ${Number(value).toLocaleString()}`, 'Revenue']} />
+              <Tooltip formatter={(value) => [`KES ${Number(value).toLocaleString()}`, 'Revenue']} />
               <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>

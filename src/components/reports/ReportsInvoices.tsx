@@ -70,7 +70,7 @@ const ReportsInvoices: React.FC<ReportsInvoicesProps> = ({ filteredInvoices }) =
                     }
                   </TableCell>
                   <TableCell>{invoice.customerName}</TableCell>
-                  <TableCell>KSh {(Number(invoice.totalAmount) || 0).toLocaleString()}</TableCell>
+                  <TableCell>KES {(Number(invoice.totalAmount) || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     {invoice.dueDate?.toDate ? 
                       invoice.dueDate.toDate().toLocaleDateString() : 

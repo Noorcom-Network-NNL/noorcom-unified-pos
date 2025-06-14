@@ -108,7 +108,7 @@ const ReportsSalesDetails: React.FC<ReportsSalesDetailsProps> = ({ filteredSales
                     </TableCell>
                     <TableCell>{sale.customerName}</TableCell>
                     <TableCell>{sale.service}</TableCell>
-                    <TableCell>KSh {(Number(sale.amount) || 0).toLocaleString()}</TableCell>
+                    <TableCell>KES {(Number(sale.amount) || 0).toLocaleString()}</TableCell>
                     <TableCell>{sale.paymentMethod}</TableCell>
                     <TableCell>
                       <Badge variant={sale.status === 'completed' ? 'default' : 'outline'}>

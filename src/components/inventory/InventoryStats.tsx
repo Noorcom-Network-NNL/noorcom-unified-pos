@@ -55,7 +55,7 @@ const InventoryStats = ({ products, sales, lowStockItems }: InventoryStatsProps)
         <CardContent className="pt-6">
           <div className="text-center">
             <p className="text-2xl font-bold text-green-600">
-              KSh {inventoryValue.toLocaleString()}
+              KES {inventoryValue.toLocaleString()}
             </p>
             <p className="text-sm text-gray-600">Inventory Value</p>
           </div>

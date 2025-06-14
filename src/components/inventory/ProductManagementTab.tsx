@@ -88,10 +88,10 @@ const ProductManagementTab = ({ products, sales, searchTerm, onRestock, onUpdate
                         <p className="text-sm text-gray-500">{product.description}</p>
                       </div>
                     </TableCell>
-                    <TableCell>KSh {product.price.toLocaleString()}</TableCell>
+                    <TableCell>KES {product.price.toLocaleString()}</TableCell>
                     <TableCell>{product.quantity} {product.unit}</TableCell>
                     <TableCell>{salesData.totalSold} {product.unit}</TableCell>
-                    <TableCell>KSh {totalValue.toLocaleString()}</TableCell>
+                    <TableCell>KES {totalValue.toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button 

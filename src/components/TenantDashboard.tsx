@@ -66,7 +66,7 @@ const TenantDashboard = () => {
     return daysLeft <= 7 && daysLeft > 0;
   };
 
-  const currency = currentTenant.settings?.currency || 'KSh';
+  const currency = currentTenant.settings?.currency || 'KES';
 
   return (
     <div className="space-y-6">
