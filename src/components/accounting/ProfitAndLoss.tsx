@@ -44,7 +44,7 @@ const ProfitAndLoss = ({ sales, expenses, accounts }: ProfitAndLossProps) => {
     return acc;
   }, {} as Record<string, number>);
 
-  const totalExpenses = Object.values(expenseCategories).reduce((sum, amount) => sum + (Number(amount) || 0), 0);
+  const totalExpenses = Object.values(expenseCategories).reduce((sum: number, amount: number) => sum + amount, 0);
   const netIncome = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netIncome / totalRevenue) * 100 : 0;
 
@@ -100,7 +100,7 @@ const ProfitAndLoss = ({ sales, expenses, accounts }: ProfitAndLossProps) => {
           {Object.entries(expenseCategories).map(([category, amount]) => (
             <div key={category} className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
               <span>{category}</span>
-              <span className="font-semibold">KSh {Number(amount).toLocaleString()}</span>
+              <span className="font-semibold">KSh {amount.toLocaleString()}</span>
             </div>
           ))}
           <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg font-bold">
