@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Smartphone, Wallet } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface PaymentMethodSelectorProps {
   amount: number;
@@ -21,6 +22,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
+  const { toast } = useToast();
 
   const paymentMethods = [
     {
@@ -29,7 +31,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       icon: Wallet,
       description: 'Pay with cash',
       color: 'bg-green-100 text-green-800',
-      available: true
+      available: false
     },
     {
       id: 'mpesa',
@@ -53,25 +55,83 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       icon: CreditCard,
       description: 'Pay with debit/credit card',
       color: 'bg-purple-100 text-purple-800',
-      available: true
+      available: false
     }
   ];
 
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Remove spaces and special characters
+    const cleanPhone = phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+    
+    // Check if it's a valid Kenyan number
+    if (cleanPhone.startsWith('+254')) {
+      return cleanPhone.length === 13;
+    } else if (cleanPhone.startsWith('254')) {
+      return cleanPhone.length === 12;
+    } else if (cleanPhone.startsWith('0')) {
+      return cleanPhone.length === 10;
+    } else if (cleanPhone.startsWith('7') || cleanPhone.startsWith('1')) {
+      return cleanPhone.length === 9;
+    }
+    
+    return false;
+  };
+
+  const formatPhoneNumber = (phone: string): string => {
+    // Remove spaces and special characters
+    let cleanPhone = phone.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+    
+    // Convert to 254 format
+    if (cleanPhone.startsWith('+254')) {
+      return cleanPhone.substring(1);
+    } else if (cleanPhone.startsWith('0')) {
+      return '254' + cleanPhone.substring(1);
+    } else if (cleanPhone.startsWith('7') || cleanPhone.startsWith('1')) {
+      return '254' + cleanPhone;
+    } else if (cleanPhone.startsWith('254')) {
+      return cleanPhone;
+    }
+    
+    return cleanPhone;
+  };
+
   const handlePaymentSelect = () => {
-    if (!selectedMethod) return;
+    if (!selectedMethod) {
+      toast({
+        title: "Select Payment Method",
+        description: "Please select a payment method to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const paymentData: any = { method: selectedMethod };
 
     if (selectedMethod === 'mpesa') {
-      if (!phoneNumber) {
-        alert('Please enter your M-Pesa phone number');
+      if (!phoneNumber.trim()) {
+        toast({
+          title: "Phone Number Required",
+          description: "Please enter your M-Pesa phone number.",
+          variant: "destructive",
+        });
         return;
       }
-      paymentData.phoneNumber = phoneNumber;
+
+      if (!validatePhoneNumber(phoneNumber)) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Please enter a valid Kenyan phone number (e.g., 0712345678).",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      paymentData.phoneNumber = formatPhoneNumber(phoneNumber);
+      console.log('Formatted phone number:', paymentData.phoneNumber);
     }
 
-    if (selectedMethod === 'paypal' && email) {
-      paymentData.email = email;
+    if (selectedMethod === 'paypal' && email.trim()) {
+      paymentData.email = email.trim();
     }
 
     onPaymentMethodSelect(selectedMethod, paymentData);
@@ -123,17 +183,18 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
 
         {selectedMethod === 'mpesa' && (
           <div className="space-y-2 p-4 bg-green-50 rounded-lg">
-            <Label htmlFor="phone">M-Pesa Phone Number</Label>
+            <Label htmlFor="phone">M-Pesa Phone Number *</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="254700000000"
+              placeholder="0712345678 or 254712345678"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               className="bg-white"
+              required
             />
             <p className="text-xs text-gray-600">
-              Enter your M-Pesa registered phone number
+              Enter your M-Pesa registered phone number (Kenyan format)
             </p>
           </div>
         )}
