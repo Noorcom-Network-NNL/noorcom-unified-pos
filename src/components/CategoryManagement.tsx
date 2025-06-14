@@ -2,8 +2,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { 
   getCategories, 
@@ -13,37 +11,10 @@ import {
   seedInitialCategories,
   type Category 
 } from '@/services/categoryService';
-import { Plus, Edit, Trash2, Tags } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-interface CategoryFormData {
-  name: string;
-  value: string;
-  description: string;
-}
+import { Plus, Tags } from 'lucide-react';
+import CategoryForm, { type CategoryFormData } from './category/CategoryForm';
+import CategoryTable from './category/CategoryTable';
+import CategoryDialogs from './category/CategoryDialogs';
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -224,58 +195,16 @@ const CategoryManagement = () => {
     }
   };
 
-  const CategoryForm = React.memo(({ isEdit = false }: { isEdit?: boolean }) => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Category Name *</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => handleInputChange('name', e.target.value)}
-          placeholder="Enter category name"
-        />
-      </div>
+  const handleCancelAdd = () => {
+    setShowAddForm(false);
+    resetForm();
+  };
 
-      <div className="space-y-2">
-        <Label htmlFor="value">Category Value *</Label>
-        <Input
-          id="value"
-          value={formData.value}
-          onChange={(e) => handleInputChange('value', e.target.value)}
-          placeholder="category-value"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Input
-          id="description"
-          value={formData.description}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Optional description"
-        />
-      </div>
-
-      <div className="flex space-x-2 pt-4">
-        <Button onClick={isEdit ? handleUpdateCategory : handleAddCategory} disabled={loading}>
-          {loading ? (isEdit ? 'Updating...' : 'Adding...') : (isEdit ? 'Update Category' : 'Add Category')}
-        </Button>
-        <Button variant="outline" onClick={() => {
-          if (isEdit) {
-            setShowEditDialog(false);
-            setEditingCategory(null);
-          } else {
-            setShowAddForm(false);
-          }
-          resetForm();
-        }}>
-          Cancel
-        </Button>
-      </div>
-    </div>
-  ));
-
-  CategoryForm.displayName = 'CategoryForm';
+  const handleCancelEdit = () => {
+    setShowEditDialog(false);
+    setEditingCategory(null);
+    resetForm();
+  };
 
   return (
     <div className="space-y-6">
@@ -297,7 +226,13 @@ const CategoryManagement = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <CategoryForm />
+            <CategoryForm 
+              formData={formData}
+              loading={loading}
+              onInputChange={handleInputChange}
+              onSubmit={handleAddCategory}
+              onCancel={handleCancelAdd}
+            />
           </CardContent>
         </Card>
       )}
@@ -308,84 +243,27 @@ const CategoryManagement = () => {
           <CardTitle>Categories ({categories.length} items)</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categories.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                    No categories found. Add your first category above.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="text-sm text-gray-600">{category.value}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{category.description || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex space-x-2 justify-end">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleEditCategory(category)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setDeleteDialog({ open: true, category })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <CategoryTable 
+            categories={categories}
+            onEdit={handleEditCategory}
+            onDelete={(category) => setDeleteDialog({ open: true, category })}
+          />
         </CardContent>
       </Card>
 
-      {/* Edit Category Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <Tags className="h-5 w-5 mr-2" />
-              Edit Category
-            </DialogTitle>
-          </DialogHeader>
-          <CategoryForm isEdit={true} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, category: open ? deleteDialog.category : null })}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the category "{deleteDialog.category?.name}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCategory} className="bg-red-600 hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Dialogs */}
+      <CategoryDialogs 
+        showEditDialog={showEditDialog}
+        setShowEditDialog={setShowEditDialog}
+        formData={formData}
+        loading={loading}
+        onInputChange={handleInputChange}
+        onUpdateCategory={handleUpdateCategory}
+        onCancelEdit={handleCancelEdit}
+        deleteDialog={deleteDialog}
+        setDeleteDialog={setDeleteDialog}
+        onDeleteCategory={handleDeleteCategory}
+      />
     </div>
   );
 };
