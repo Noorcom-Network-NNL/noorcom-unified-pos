@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,14 +94,14 @@ const ProductsModule = () => {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       name: '',
       price: '',
@@ -111,7 +111,7 @@ const ProductsModule = () => {
       minStock: '',
       description: ''
     });
-  };
+  }, []);
 
   const handleAddProduct = async () => {
     if (!formData.name || !formData.price || !formData.quantity || !formData.category || !formData.unit) {
@@ -255,7 +255,7 @@ const ProductsModule = () => {
     }
   };
 
-  const ProductForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+  const ProductFormComponent = React.memo(({ isEdit = false }: { isEdit?: boolean }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div className="space-y-2">
         <Label htmlFor="name">Product Name *</Label>
@@ -374,7 +374,7 @@ const ProductsModule = () => {
         )}
       </div>
     </div>
-  );
+  ));
 
   return (
     <div className="space-y-6">
@@ -398,7 +398,7 @@ const ProductsModule = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ProductForm />
+            <ProductFormComponent />
           </CardContent>
         </Card>
       )}
@@ -528,7 +528,7 @@ const ProductsModule = () => {
               Edit Product
             </DialogTitle>
           </DialogHeader>
-          <ProductForm isEdit={true} />
+          <ProductFormComponent isEdit={true} />
         </DialogContent>
       </Dialog>
 
@@ -547,7 +547,7 @@ const ProductsModule = () => {
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
+        </AlertDialogFooter>
       </AlertDialog>
     </div>
   );
