@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
+import PaymentMethodSelector from '../payments/PaymentMethodSelector';
+import PaymentProcessingDialog from '../payments/PaymentProcessingDialog';
 
 interface SaleSummaryProps {
   paymentMethod: string;
@@ -21,41 +22,73 @@ const SaleSummary: React.FC<SaleSummaryProps> = ({
   loading,
   hasItems
 }) => {
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedPaymentData, setSelectedPaymentData] = useState<any>(null);
+
+  const handlePaymentMethodSelect = (method: string, data?: any) => {
+    onPaymentMethodChange(method);
+    
+    if (method === 'mpesa' || method === 'paypal') {
+      setSelectedPaymentData({
+        amount: totalAmount,
+        method,
+        phoneNumber: data?.phoneNumber,
+        email: data?.email,
+        orderId: `SALE-${Date.now()}`,
+        description: `POS Sale - ${hasItems ? 'Multiple items' : 'No items'}`
+      });
+      setShowPaymentDialog(true);
+    } else {
+      // For cash and card payments, proceed directly
+      onCreateSale();
+    }
+  };
+
+  const handlePaymentComplete = (success: boolean, transactionId?: string) => {
+    setShowPaymentDialog(false);
+    if (success) {
+      onCreateSale();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Payment Method</Label>
-        <Select value={paymentMethod} onValueChange={onPaymentMethodChange}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="cash">Cash</SelectItem>
-            <SelectItem value="card">Card</SelectItem>
-            <SelectItem value="mobile">Mobile Money</SelectItem>
-            <SelectItem value="bank">Bank Transfer</SelectItem>
-          </SelectContent>
-        </Select>
+        <PaymentMethodSelector
+          amount={totalAmount}
+          onPaymentMethodSelect={handlePaymentMethodSelect}
+          loading={loading}
+        />
       </div>
 
       {hasItems && (
         <div className="border-t pt-4">
           <div className="flex justify-between items-center text-lg font-semibold">
             <span>Total:</span>
-            <span>KSh {totalAmount.toLocaleString()}</span>
+            <span>KES {totalAmount.toLocaleString()}</span>
           </div>
         </div>
       )}
 
-      <Button 
-        onClick={onCreateSale} 
-        className="w-full" 
-        disabled={loading || !hasItems}
-      >
-        {loading ? 'Creating Sale...' : 
-         !hasItems ? 'Add Products to Create Sale' : 
-         `Create Sale (KSh ${totalAmount.toLocaleString()})`}
-      </Button>
+      {paymentMethod === 'cash' || paymentMethod === 'card' ? (
+        <Button 
+          onClick={onCreateSale} 
+          className="w-full" 
+          disabled={loading || !hasItems}
+        >
+          {loading ? 'Creating Sale...' : 
+           !hasItems ? 'Add Products to Create Sale' : 
+           `Create Sale (KES ${totalAmount.toLocaleString()})`}
+        </Button>
+      ) : null}
+
+      <PaymentProcessingDialog
+        open={showPaymentDialog}
+        onClose={() => setShowPaymentDialog(false)}
+        paymentData={selectedPaymentData}
+        onPaymentComplete={handlePaymentComplete}
+      />
     </div>
   );
 };
