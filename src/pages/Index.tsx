@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,7 +14,8 @@ import {
   Mail,
   LogOut,
   Package,
-  Building2
+  Building2,
+  Calculator
 } from 'lucide-react';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useTenant } from '@/contexts/TenantContext';
@@ -35,6 +35,7 @@ import ScheduleJobDialog from '@/components/ScheduleJobDialog';
 import UserManagementModule from '@/components/UserManagementModule';
 import SettingsDialog from '@/components/SettingsDialog';
 import DealsModule from '@/components/DealsModule';
+import AccountingModule from '@/components/AccountingModule';
 
 const Index = () => {
   const { currentUser, userProfile, logout, hasPermission } = useFirebase();
@@ -55,6 +56,7 @@ const Index = () => {
     { id: 'inventory', name: 'Inventory', icon: FileText, requiredRole: 'inventory_clerk' as const },
     { id: 'customers', name: 'Customers', icon: User, requiredRole: 'cashier' as const },
     { id: 'deals', name: 'Deal Registration', icon: CreditCard, requiredRole: 'manager' as const },
+    { id: 'accounting', name: 'Accounting', icon: Calculator, requiredRole: 'accountant' as const },
     { id: 'reports', name: 'Reports', icon: Search, requiredRole: 'accountant' as const },
     { id: 'users', name: 'User Management', icon: Settings, requiredRole: 'admin' as const },
   ];
@@ -95,6 +97,8 @@ const Index = () => {
         return <CustomersModule />;
       case 'deals':
         return <DealsModule />;
+      case 'accounting':
+        return <AccountingModule />;
       case 'reports':
         return <ReportsModule />;
       case 'users':
