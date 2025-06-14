@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +38,7 @@ const SubscriptionManager = () => {
     {
       tier: 'free' as SubscriptionTier,
       name: 'Free',
-      price: `${currency} 0`,
+      price: `KES 0`,
       period: 'forever',
       icon: Star,
       features: [
@@ -54,7 +53,7 @@ const SubscriptionManager = () => {
     {
       tier: 'basic' as SubscriptionTier,
       name: 'Basic',
-      price: `${currency} 2,900`,
+      price: `KES 2,900`,
       period: 'per month',
       icon: Zap,
       features: [
@@ -70,7 +69,7 @@ const SubscriptionManager = () => {
     {
       tier: 'professional' as SubscriptionTier,
       name: 'Professional',
-      price: `${currency} 9,900`,
+      price: `KES 9,900`,
       period: 'per month',
       icon: Crown,
       popular: true,

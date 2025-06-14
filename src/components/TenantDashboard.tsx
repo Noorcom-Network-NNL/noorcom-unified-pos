@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -123,7 +122,7 @@ const TenantDashboard = () => {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currency} {analytics.totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">KES {analytics.totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-gray-500">
               +{analytics.growthRate}% from last month
             </p>
