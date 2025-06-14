@@ -384,8 +384,8 @@ const CategoryManagement = () => {
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogFooter>
-      </Dialog>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
