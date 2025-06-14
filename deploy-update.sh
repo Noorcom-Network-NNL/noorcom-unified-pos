@@ -21,7 +21,7 @@ mkdir -p logs
 # Restart PM2 with ecosystem config
 echo "🔄 Restarting application..."
 pm2 delete noorcom-pos 2>/dev/null || true
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 # Save PM2 configuration
 pm2 save

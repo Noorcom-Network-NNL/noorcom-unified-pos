@@ -52,4 +52,4 @@ firebase functions:log
 ## Environment Files
 - Production env: `.env.production`
 - Firebase config: `firebase.json`
-- PM2 config: `ecosystem.config.js`
+- PM2 config: `ecosystem.config.cjs`
