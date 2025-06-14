@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,135 @@ interface Product {
   description?: string;
 }
 
+interface FormData {
+  name: string;
+  price: string;
+  quantity: string;
+  category: string;
+  unit: string;
+  minStock: string;
+  description: string;
+}
+
+interface ProductFormProps {
+  formData: FormData;
+  onInputChange: (field: string, value: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  loading: boolean;
+  isEdit?: boolean;
+}
+
+const ProductFormComponent = React.memo<ProductFormProps>(({ 
+  formData, 
+  onInputChange, 
+  onSubmit, 
+  onCancel, 
+  loading, 
+  isEdit = false 
+}) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-2">
+      <Label htmlFor="name">Product Name *</Label>
+      <Input
+        id="name"
+        value={formData.name}
+        onChange={(e) => onInputChange('name', e.target.value)}
+        placeholder="Enter product name"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="price">Price (KSh) *</Label>
+      <Input
+        id="price"
+        type="number"
+        value={formData.price}
+        onChange={(e) => onInputChange('price', e.target.value)}
+        placeholder="0.00"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="quantity">Quantity *</Label>
+      <Input
+        id="quantity"
+        type="number"
+        value={formData.quantity}
+        onChange={(e) => onInputChange('quantity', e.target.value)}
+        placeholder="0"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="category">Category *</Label>
+      <Select value={formData.category} onValueChange={(value) => onInputChange('category', value)}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select category" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="printing">Printing Materials</SelectItem>
+          <SelectItem value="electronics">Electronics</SelectItem>
+          <SelectItem value="services">Service Credits</SelectItem>
+          <SelectItem value="accessories">Accessories</SelectItem>
+          <SelectItem value="consumables">Consumables</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="unit">Unit *</Label>
+      <Select value={formData.unit} onValueChange={(value) => onInputChange('unit', value)}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select unit" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pieces">Pieces</SelectItem>
+          <SelectItem value="meters">Meters</SelectItem>
+          <SelectItem value="units">Units</SelectItem>
+          <SelectItem value="packs">Packs</SelectItem>
+          <SelectItem value="cartridges">Cartridges</SelectItem>
+          <SelectItem value="credits">Credits</SelectItem>
+          <SelectItem value="licenses">Licenses</SelectItem>
+          <SelectItem value="GB">GB</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="minStock">Minimum Stock</Label>
+      <Input
+        id="minStock"
+        type="number"
+        value={formData.minStock}
+        onChange={(e) => onInputChange('minStock', e.target.value)}
+        placeholder="10"
+      />
+    </div>
+
+    <div className="space-y-2 md:col-span-2 lg:col-span-3">
+      <Label htmlFor="description">Description</Label>
+      <Input
+        id="description"
+        value={formData.description}
+        onChange={(e) => onInputChange('description', e.target.value)}
+        placeholder="Optional product description"
+      />
+    </div>
+
+    <div className="flex space-x-2 mt-6 md:col-span-2 lg:col-span-3">
+      <Button onClick={onSubmit} disabled={loading}>
+        {loading ? (isEdit ? 'Updating...' : 'Adding...') : (isEdit ? 'Update Product' : 'Add Product')}
+      </Button>
+      <Button variant="outline" onClick={onCancel}>
+        Cancel
+      </Button>
+    </div>
+  </div>
+));
+
+ProductFormComponent.displayName = 'ProductFormComponent';
+
 const ProductsModule = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +192,7 @@ const ProductsModule = () => {
   const { hasPermission } = useFirebase();
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     price: '',
     quantity: '',
@@ -112,7 +242,7 @@ const ProductsModule = () => {
     });
   }, []);
 
-  const handleAddProduct = async () => {
+  const handleAddProduct = useCallback(async () => {
     if (!formData.name || !formData.price || !formData.quantity || !formData.category || !formData.unit) {
       toast({
         title: "Error",
@@ -155,7 +285,12 @@ const ProductsModule = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, toast, resetForm, fetchProducts]);
+
+  const handleCancelAdd = useCallback(() => {
+    setShowAddForm(false);
+    resetForm();
+  }, [resetForm]);
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
@@ -171,7 +306,7 @@ const ProductsModule = () => {
     setShowEditDialog(true);
   };
 
-  const handleUpdateProduct = async () => {
+  const handleUpdateProduct = useCallback(async () => {
     if (!editingProduct || !formData.name || !formData.price || !formData.quantity || !formData.category || !formData.unit) {
       toast({
         title: "Error",
@@ -215,7 +350,13 @@ const ProductsModule = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [editingProduct, formData, toast, resetForm, fetchProducts]);
+
+  const handleCancelEdit = useCallback(() => {
+    setShowEditDialog(false);
+    setEditingProduct(null);
+    resetForm();
+  }, [resetForm]);
 
   const handleDeleteProduct = async () => {
     if (!deleteDialog.product) return;
@@ -254,127 +395,6 @@ const ProductsModule = () => {
     }
   };
 
-  const ProductFormComponent = React.memo(({ isEdit = false }: { isEdit?: boolean }) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Product Name *</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => handleInputChange('name', e.target.value)}
-          placeholder="Enter product name"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="price">Price (KSh) *</Label>
-        <Input
-          id="price"
-          type="number"
-          value={formData.price}
-          onChange={(e) => handleInputChange('price', e.target.value)}
-          placeholder="0.00"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="quantity">Quantity *</Label>
-        <Input
-          id="quantity"
-          type="number"
-          value={formData.quantity}
-          onChange={(e) => handleInputChange('quantity', e.target.value)}
-          placeholder="0"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="category">Category *</Label>
-        <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="printing">Printing Materials</SelectItem>
-            <SelectItem value="electronics">Electronics</SelectItem>
-            <SelectItem value="services">Service Credits</SelectItem>
-            <SelectItem value="accessories">Accessories</SelectItem>
-            <SelectItem value="consumables">Consumables</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="unit">Unit *</Label>
-        <Select value={formData.unit} onValueChange={(value) => handleInputChange('unit', value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select unit" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pieces">Pieces</SelectItem>
-            <SelectItem value="meters">Meters</SelectItem>
-            <SelectItem value="units">Units</SelectItem>
-            <SelectItem value="packs">Packs</SelectItem>
-            <SelectItem value="cartridges">Cartridges</SelectItem>
-            <SelectItem value="credits">Credits</SelectItem>
-            <SelectItem value="licenses">Licenses</SelectItem>
-            <SelectItem value="GB">GB</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="minStock">Minimum Stock</Label>
-        <Input
-          id="minStock"
-          type="number"
-          value={formData.minStock}
-          onChange={(e) => handleInputChange('minStock', e.target.value)}
-          placeholder="10"
-        />
-      </div>
-
-      <div className="space-y-2 md:col-span-2 lg:col-span-3">
-        <Label htmlFor="description">Description</Label>
-        <Input
-          id="description"
-          value={formData.description}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Optional product description"
-        />
-      </div>
-
-      <div className="flex space-x-2 mt-6 md:col-span-2 lg:col-span-3">
-        {isEdit ? (
-          <>
-            <Button onClick={handleUpdateProduct} disabled={loading}>
-              {loading ? 'Updating...' : 'Update Product'}
-            </Button>
-            <Button variant="outline" onClick={() => {
-              setShowEditDialog(false);
-              setEditingProduct(null);
-              resetForm();
-            }}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={handleAddProduct} disabled={loading}>
-              {loading ? 'Adding...' : 'Add Product'}
-            </Button>
-            <Button variant="outline" onClick={() => {
-              setShowAddForm(false);
-              resetForm();
-            }}>
-              Cancel
-            </Button>
-          </>
-        )}
-      </div>
-    </div>
-  ));
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -397,7 +417,13 @@ const ProductsModule = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ProductFormComponent />
+            <ProductFormComponent
+              formData={formData}
+              onInputChange={handleInputChange}
+              onSubmit={handleAddProduct}
+              onCancel={handleCancelAdd}
+              loading={loading}
+            />
           </CardContent>
         </Card>
       )}
@@ -527,7 +553,14 @@ const ProductsModule = () => {
               Edit Product
             </DialogTitle>
           </DialogHeader>
-          <ProductFormComponent isEdit={true} />
+          <ProductFormComponent
+            formData={formData}
+            onInputChange={handleInputChange}
+            onSubmit={handleUpdateProduct}
+            onCancel={handleCancelEdit}
+            loading={loading}
+            isEdit={true}
+          />
         </DialogContent>
       </Dialog>
 
