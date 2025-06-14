@@ -66,15 +66,16 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
           setMessage(response.error || 'PayPal payment failed');
         }
       } else if (paymentData.method === 'mpesa') {
+        setMessage('Sending STK Push to your phone...');
         response = await processMpesaPayment(paymentRequest);
         
         if (response.success) {
           setStatus('pending');
-          setMessage('Please check your phone for M-Pesa STK push notification');
+          setMessage('Please check your phone for M-Pesa STK push notification and enter your M-Pesa PIN');
           setTransactionId(response.transactionId || '');
           
-          // Start polling for payment verification
-          setTimeout(() => verifyMpesaPayment(response.transactionId || ''), 5000);
+          // Start polling for payment verification after 10 seconds
+          setTimeout(() => verifyMpesaPayment(response.transactionId || ''), 10000);
         } else {
           setStatus('failed');
           setMessage(response.error || 'M-Pesa payment failed');
@@ -88,24 +89,39 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
   };
 
   const verifyMpesaPayment = async (txnId: string) => {
-    setMessage('Verifying payment...');
+    setMessage('Verifying payment with M-Pesa...');
     
     try {
-      const isVerified = await verifyPayment(txnId, 'mpesa');
+      // Poll for payment status multiple times
+      let attempts = 0;
+      const maxAttempts = 6; // Check for 3 minutes (30 seconds * 6)
       
-      if (isVerified) {
-        setStatus('success');
-        setMessage('Payment completed successfully!');
-        onPaymentComplete(true, txnId);
-      } else {
-        setStatus('failed');
-        setMessage('Payment verification failed. Please try again or contact support.');
-        onPaymentComplete(false);
-      }
+      const checkPaymentStatus = async (): Promise<boolean> => {
+        attempts++;
+        const isVerified = await verifyPayment(txnId, 'mpesa');
+        
+        if (isVerified) {
+          setStatus('success');
+          setMessage('M-Pesa payment completed successfully!');
+          onPaymentComplete(true, txnId);
+          return true;
+        } else if (attempts < maxAttempts) {
+          setMessage(`Verifying payment... (${attempts}/${maxAttempts})`);
+          setTimeout(checkPaymentStatus, 30000); // Check every 30 seconds
+          return false;
+        } else {
+          setStatus('failed');
+          setMessage('Payment verification timeout. Please contact support if payment was deducted.');
+          onPaymentComplete(false);
+          return false;
+        }
+      };
+      
+      await checkPaymentStatus();
     } catch (error) {
       console.error('Payment verification error:', error);
       setStatus('failed');
-      setMessage('Payment verification failed.');
+      setMessage('Payment verification failed. Please contact support if payment was deducted.');
       onPaymentComplete(false);
     }
   };
@@ -162,6 +178,14 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
               <ExternalLink className="h-4 w-4 mr-2" />
               Open PayPal
             </Button>
+          )}
+          
+          {status === 'pending' && paymentData.method === 'mpesa' && (
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="text-sm text-green-700">
+                📱 Check your phone for the M-Pesa payment request and enter your PIN to complete the transaction.
+              </p>
+            </div>
           )}
 
           {(status === 'success' || status === 'failed') && (

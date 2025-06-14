@@ -1,6 +1,6 @@
-
 import { collection, addDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { processMpesaPayment, queryMpesaPaymentStatus } from './mpesaService';
 
 export interface PaymentRequest {
   amount: number;
@@ -19,7 +19,7 @@ export interface PaymentResponse {
   error?: string;
 }
 
-// PayPal Integration
+// PayPal Integration (keeping existing mock implementation)
 export const processPayPalPayment = async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
   try {
     console.log('Processing PayPal payment:', paymentData);
@@ -64,10 +64,10 @@ export const processPayPalPayment = async (paymentData: PaymentRequest): Promise
   }
 };
 
-// M-Pesa Integration
-export const processMpesaPayment = async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
+// M-Pesa Integration using live API
+export const processMpesaPayment_Live = async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
   try {
-    console.log('Processing M-Pesa payment:', paymentData);
+    console.log('Processing live M-Pesa payment:', paymentData);
     
     if (!paymentData.customerPhone) {
       return {
@@ -76,35 +76,26 @@ export const processMpesaPayment = async (paymentData: PaymentRequest): Promise<
       };
     }
 
-    // Store payment intent in Firebase
-    const paymentDoc = await addDoc(collection(db, 'payments'), {
-      ...paymentData,
-      status: 'pending',
-      provider: 'mpesa',
-      createdAt: Timestamp.fromDate(new Date())
-    });
-
-    // In a real implementation, you would make an API call to Safaricom Daraja API
-    // For now, we'll simulate the M-Pesa STK push
-    const mockMpesaResponse = {
-      MerchantRequestID: `MPESA_${Date.now()}`,
-      CheckoutRequestID: `CHK_${Date.now()}`,
-      ResponseCode: '0',
-      ResponseDescription: 'Success. Request accepted for processing',
-      CustomerMessage: 'Success. Request accepted for processing'
+    const mpesaRequest = {
+      amount: paymentData.amount,
+      phoneNumber: paymentData.customerPhone,
+      orderId: paymentData.orderId,
+      description: paymentData.description
     };
 
-    // Update payment record with M-Pesa response
-    await updateDoc(doc(db, 'payments', paymentDoc.id), {
-      merchantRequestId: mockMpesaResponse.MerchantRequestID,
-      checkoutRequestId: mockMpesaResponse.CheckoutRequestID,
-      updatedAt: Timestamp.fromDate(new Date())
-    });
+    const response = await processMpesaPayment(mpesaRequest);
 
-    return {
-      success: true,
-      transactionId: mockMpesaResponse.CheckoutRequestID
-    };
+    if (response.success) {
+      return {
+        success: true,
+        transactionId: response.checkoutRequestId
+      };
+    } else {
+      return {
+        success: false,
+        error: response.error || 'M-Pesa payment failed'
+      };
+    }
   } catch (error) {
     console.error('M-Pesa payment error:', error);
     return {
@@ -118,13 +109,19 @@ export const verifyPayment = async (transactionId: string, provider: 'paypal' | 
   try {
     console.log(`Verifying ${provider} payment:`, transactionId);
     
-    // In a real implementation, you would verify the payment with the provider
-    // For demo purposes, we'll simulate successful verification after 3 seconds
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    return Math.random() > 0.2; // 80% success rate for demo
+    if (provider === 'mpesa') {
+      // Use live M-Pesa query for verification
+      return await queryMpesaPaymentStatus(transactionId);
+    } else {
+      // For PayPal, simulate verification (implement PayPal verification API)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      return Math.random() > 0.2; // 80% success rate for demo
+    }
   } catch (error) {
     console.error('Payment verification error:', error);
     return false;
   }
 };
+
+// Export the live M-Pesa function as the main one
+export { processMpesaPayment_Live as processMpesaPayment };
