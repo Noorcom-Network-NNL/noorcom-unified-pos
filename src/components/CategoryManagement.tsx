@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,9 +70,7 @@ const CategoryManagement = () => {
   const initializeCategories = async () => {
     setLoading(true);
     try {
-      // First seed initial categories if none exist
       await seedInitialCategories();
-      // Then fetch all categories
       await fetchCategories();
     } catch (error) {
       console.error('Error initializing categories:', error);
@@ -100,30 +98,28 @@ const CategoryManagement = () => {
     }
   };
 
-  const handleInputChange = (field: keyof CategoryFormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Auto-generate value from name
-    if (field === 'name') {
-      setFormData(prev => ({
-        ...prev,
-        value: value.toLowerCase().replace(/[^a-z0-9]/g, '')
-      }));
-    }
-  };
+  const handleInputChange = useCallback((field: keyof CategoryFormData, value: string) => {
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Auto-generate value from name
+      if (field === 'name') {
+        newData.value = value.toLowerCase().replace(/[^a-z0-9]/g, '');
+      }
+      
+      return newData;
+    });
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       name: '',
       value: '',
       description: ''
     });
-  };
+  }, []);
 
-  const handleAddCategory = async () => {
+  const handleAddCategory = useCallback(async () => {
     if (!formData.name || !formData.value) {
       toast({
         title: "Error",
@@ -155,9 +151,9 @@ const CategoryManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, toast, resetForm]);
 
-  const handleEditCategory = (category: Category) => {
+  const handleEditCategory = useCallback((category: Category) => {
     setEditingCategory(category);
     setFormData({
       name: category.name,
@@ -165,9 +161,9 @@ const CategoryManagement = () => {
       description: category.description || ''
     });
     setShowEditDialog(true);
-  };
+  }, []);
 
-  const handleUpdateCategory = async () => {
+  const handleUpdateCategory = useCallback(async () => {
     if (!editingCategory || !formData.name || !formData.value) {
       toast({
         title: "Error",
@@ -200,7 +196,7 @@ const CategoryManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [editingCategory, formData, toast, resetForm]);
 
   const handleDeleteCategory = async () => {
     if (!deleteDialog.category) return;
@@ -228,7 +224,7 @@ const CategoryManagement = () => {
     }
   };
 
-  const CategoryForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+  const CategoryForm = React.memo(({ isEdit = false }: { isEdit?: boolean }) => (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Category Name *</Label>
@@ -277,7 +273,9 @@ const CategoryManagement = () => {
         </Button>
       </div>
     </div>
-  );
+  ));
+
+  CategoryForm.displayName = 'CategoryForm';
 
   return (
     <div className="space-y-6">
@@ -386,8 +384,8 @@ const CategoryManagement = () => {
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        </AlertDialogFooter>
+      </Dialog>
     </div>
   );
 };
