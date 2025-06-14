@@ -54,13 +54,14 @@ export const processMpesaPayment = async (paymentData: MpesaPaymentRequest): Pro
       checkoutRequestId: checkoutRequestId,
       merchantRequestId: `MR_${Date.now()}`,
       createdAt: Timestamp.fromDate(new Date()),
-      // Simulate STK Push success
+      // Mark as simulation since we can't make real API calls from frontend
+      isSimulation: true,
       stkPushStatus: 'initiated'
     });
 
     console.log('Payment record created in Firebase:', paymentDoc.id);
+    console.log('⚠️ NOTE: This is a simulation. Real M-Pesa integration requires backend server.');
 
-    // Simulate STK Push initiation success
     return {
       success: true,
       checkoutRequestId: checkoutRequestId
@@ -74,7 +75,7 @@ export const processMpesaPayment = async (paymentData: MpesaPaymentRequest): Pro
   }
 };
 
-// Simulate payment status query
+// Simulate payment status query - made more realistic
 export const queryMpesaPaymentStatus = async (checkoutRequestId: string): Promise<boolean> => {
   try {
     console.log('Querying M-Pesa payment status:', checkoutRequestId);
@@ -91,33 +92,17 @@ export const queryMpesaPaymentStatus = async (checkoutRequestId: string): Promis
       const paymentDoc = querySnapshot.docs[0];
       const paymentData = paymentDoc.data();
       
-      // Simulate random payment success/failure for demo purposes
-      // In production, this would query the actual M-Pesa API
-      const isSuccessful = Math.random() > 0.3; // 70% success rate for demo
+      console.log('⚠️ SIMULATION MODE: No real M-Pesa API available in browser');
+      console.log('💡 For production: Set up backend server or Supabase Edge Functions');
       
-      if (isSuccessful) {
-        // Update payment record to completed
-        await updateDoc(doc(db, 'payments', paymentDoc.id), {
-          status: 'completed',
-          mpesaReceiptNumber: `MPR${Date.now()}`,
-          transactionDate: new Date().toISOString(),
-          resultDesc: 'The service request is processed successfully.',
-          updatedAt: Timestamp.fromDate(new Date())
-        });
-        
-        console.log('Payment verified as successful');
-        return true;
-      } else {
-        // Update payment record to failed
-        await updateDoc(doc(db, 'payments', paymentDoc.id), {
-          status: 'failed',
-          error: 'Transaction cancelled by user',
-          updatedAt: Timestamp.fromDate(new Date())
-        });
-        
-        console.log('Payment verification failed');
-        return false;
-      }
+      // Instead of random success, always fail in simulation to prevent false positives
+      await updateDoc(doc(db, 'payments', paymentDoc.id), {
+        status: 'simulation_timeout',
+        error: 'This is a simulation - no real STK Push sent. Backend integration required.',
+        updatedAt: Timestamp.fromDate(new Date())
+      });
+      
+      return false; // Always return false in simulation to prevent false success
     }
     
     return false;

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Loader2, ExternalLink } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
 import { processPayPalPayment, processMpesaPayment, verifyPayment } from '@/services/paymentService';
 
 interface PaymentProcessingDialogProps {
@@ -25,7 +25,7 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
   paymentData,
   onPaymentComplete
 }) => {
-  const [status, setStatus] = useState<'processing' | 'pending' | 'success' | 'failed'>('processing');
+  const [status, setStatus] = useState<'processing' | 'pending' | 'success' | 'failed' | 'simulation'>('processing');
   const [message, setMessage] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [paymentUrl, setPaymentUrl] = useState('');
@@ -66,16 +66,13 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
           setMessage(response.error || 'PayPal payment failed');
         }
       } else if (paymentData.method === 'mpesa') {
-        setMessage('Sending STK Push to your phone...');
+        setMessage('Processing M-Pesa payment...');
         response = await processMpesaPayment(paymentRequest);
         
         if (response.success) {
-          setStatus('pending');
-          setMessage('Please check your phone for M-Pesa STK push notification and enter your M-Pesa PIN');
+          setStatus('simulation');
+          setMessage('⚠️ SIMULATION MODE: This is a demo without real M-Pesa integration');
           setTransactionId(response.transactionId || '');
-          
-          // Start polling for payment verification after 10 seconds
-          setTimeout(() => verifyMpesaPayment(response.transactionId || ''), 10000);
         } else {
           setStatus('failed');
           setMessage(response.error || 'M-Pesa payment failed');
@@ -85,44 +82,6 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
       console.error('Payment processing error:', error);
       setStatus('failed');
       setMessage('Payment processing failed. Please try again.');
-    }
-  };
-
-  const verifyMpesaPayment = async (txnId: string) => {
-    setMessage('Verifying payment with M-Pesa...');
-    
-    try {
-      // Poll for payment status multiple times
-      let attempts = 0;
-      const maxAttempts = 6; // Check for 3 minutes (30 seconds * 6)
-      
-      const checkPaymentStatus = async (): Promise<boolean> => {
-        attempts++;
-        const isVerified = await verifyPayment(txnId, 'mpesa');
-        
-        if (isVerified) {
-          setStatus('success');
-          setMessage('M-Pesa payment completed successfully!');
-          onPaymentComplete(true, txnId);
-          return true;
-        } else if (attempts < maxAttempts) {
-          setMessage(`Verifying payment... (${attempts}/${maxAttempts})`);
-          setTimeout(checkPaymentStatus, 30000); // Check every 30 seconds
-          return false;
-        } else {
-          setStatus('failed');
-          setMessage('Payment verification timeout. Please contact support if payment was deducted.');
-          onPaymentComplete(false);
-          return false;
-        }
-      };
-      
-      await checkPaymentStatus();
-    } catch (error) {
-      console.error('Payment verification error:', error);
-      setStatus('failed');
-      setMessage('Payment verification failed. Please contact support if payment was deducted.');
-      onPaymentComplete(false);
     }
   };
 
@@ -138,6 +97,11 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
     }
   };
 
+  const handleSimulationClose = () => {
+    onPaymentComplete(false); // Don't mark as successful since it's just a simulation
+    onClose();
+  };
+
   const getStatusIcon = () => {
     switch (status) {
       case 'processing':
@@ -147,6 +111,8 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
         return <CheckCircle className="h-12 w-12 text-green-500" />;
       case 'failed':
         return <XCircle className="h-12 w-12 text-red-500" />;
+      case 'simulation':
+        return <AlertTriangle className="h-12 w-12 text-yellow-500" />;
     }
   };
 
@@ -180,11 +146,17 @@ const PaymentProcessingDialog: React.FC<PaymentProcessingDialogProps> = ({
             </Button>
           )}
           
-          {status === 'pending' && paymentData.method === 'mpesa' && (
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-sm text-green-700">
-                📱 Check your phone for the M-Pesa payment request and enter your PIN to complete the transaction.
+          {status === 'simulation' && (
+            <div className="bg-yellow-50 p-4 rounded-lg space-y-3">
+              <p className="text-sm text-yellow-700">
+                🚧 <strong>Demo Mode:</strong> No real STK Push sent to your phone.
               </p>
+              <p className="text-xs text-yellow-600">
+                For production M-Pesa integration, you need a backend server or Supabase Edge Functions to handle the API calls securely.
+              </p>
+              <Button onClick={handleSimulationClose} variant="outline" className="w-full">
+                Close Demo
+              </Button>
             </div>
           )}
 
