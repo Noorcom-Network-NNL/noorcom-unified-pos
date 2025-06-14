@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
+import SettingsDialog from '@/components/SettingsDialog';
 
 const TenantDashboard = () => {
   const { currentTenant, hasFeature } = useTenant();
@@ -82,10 +83,12 @@ const TenantDashboard = () => {
         </div>
         
         {hasPermission('admin') && (
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            Tenant Settings
-          </Button>
+          <SettingsDialog>
+            <Button variant="outline">
+              <Settings className="h-4 w-4 mr-2" />
+              Tenant Settings
+            </Button>
+          </SettingsDialog>
         )}
       </div>
 
