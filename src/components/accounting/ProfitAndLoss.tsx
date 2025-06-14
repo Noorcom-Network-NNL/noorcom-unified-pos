@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,7 +43,7 @@ const ProfitAndLoss = ({ sales, expenses, accounts }: ProfitAndLossProps) => {
     return acc;
   }, {} as Record<string, number>);
 
-  const totalExpenses = Object.values(expenseCategories).reduce((sum: number, amount: number) => sum + amount, 0);
+  const totalExpenses = (Object.values(expenseCategories) as number[]).reduce((sum: number, amount: number) => sum + amount, 0);
   const netIncome = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netIncome / totalRevenue) * 100 : 0;
 
