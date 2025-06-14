@@ -66,9 +66,9 @@ const CustomerDetails = ({ customer }: CustomerDetailsProps) => {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-green-600">
-              {(customer.totalSpent || 0).toLocaleString()}
+              KSh {(customer.totalSpent || 0).toLocaleString()}
             </p>
-            <p className="text-xs text-gray-600">Total Spent (KSh)</p>
+            <p className="text-xs text-gray-600">Total Spent</p>
           </div>
         </div>
 

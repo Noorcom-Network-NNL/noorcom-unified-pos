@@ -100,8 +100,8 @@ export const TenantProvider = ({ children }: TenantProviderProps) => {
           billingEmail: currentUser?.email || '',
           settings: {
             timezone: 'UTC',
-            currency: 'USD',
-            dateFormat: 'MM/DD/YYYY',
+            currency: 'KES',
+            dateFormat: 'DD/MM/YYYY',
             companyInfo: {
               name: 'My Business',
               address: '',
