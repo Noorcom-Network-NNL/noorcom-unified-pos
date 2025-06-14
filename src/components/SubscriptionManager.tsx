@@ -15,11 +15,18 @@ import {
 } from 'lucide-react';
 import { useTenant, SubscriptionTier } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import PaymentProcessingDialog from '@/components/payments/PaymentProcessingDialog';
 
 const SubscriptionManager = () => {
   const { currentTenant, hasFeature } = useTenant();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{
+    tier: SubscriptionTier;
+    name: string;
+    price: number;
+  } | null>(null);
 
   if (!currentTenant) {
     return (
@@ -38,7 +45,8 @@ const SubscriptionManager = () => {
     {
       tier: 'free' as SubscriptionTier,
       name: 'Free',
-      price: `KES 0`,
+      price: 0,
+      priceDisplay: `KES 0`,
       period: 'forever',
       icon: Star,
       features: [
@@ -53,7 +61,8 @@ const SubscriptionManager = () => {
     {
       tier: 'basic' as SubscriptionTier,
       name: 'Basic',
-      price: `KES 2,900`,
+      price: 2900,
+      priceDisplay: `KES 2,900`,
       period: 'per month',
       icon: Zap,
       features: [
@@ -69,7 +78,8 @@ const SubscriptionManager = () => {
     {
       tier: 'professional' as SubscriptionTier,
       name: 'Professional',
-      price: `KES 9,900`,
+      price: 9900,
+      priceDisplay: `KES 9,900`,
       period: 'per month',
       icon: Crown,
       popular: true,
@@ -87,7 +97,8 @@ const SubscriptionManager = () => {
     {
       tier: 'enterprise' as SubscriptionTier,
       name: 'Enterprise',
-      price: 'Custom',
+      price: 0,
+      priceDisplay: 'Custom',
       period: 'pricing',
       icon: Users,
       features: [
@@ -106,31 +117,51 @@ const SubscriptionManager = () => {
   const currentPlan = plans.find(plan => plan.tier === currentTenant.subscriptionTier);
 
   const handleUpgrade = async (tier: SubscriptionTier) => {
-    setLoading(true);
-    try {
-      // Here you would integrate with your payment processor (Stripe, etc.)
+    const plan = plans.find(p => p.tier === tier);
+    if (!plan) return;
+
+    if (tier === 'enterprise') {
       toast({
-        title: "Upgrade initiated",
-        description: `Redirecting to payment for ${tier} plan...`,
+        title: "Contact Sales",
+        description: "Please contact our sales team for Enterprise pricing and setup.",
       });
-      
-      // Simulate payment process
-      setTimeout(() => {
-        toast({
-          title: "Upgrade successful",
-          description: `You've been upgraded to ${tier} plan!`,
-        });
-        setLoading(false);
-      }, 2000);
-    } catch (error) {
-      console.error('Upgrade error:', error);
+      return;
+    }
+
+    if (plan.price === 0) {
       toast({
-        title: "Upgrade failed",
-        description: "Please try again or contact support.",
+        title: "No payment required",
+        description: "This plan is free.",
+      });
+      return;
+    }
+
+    setSelectedPlan(plan);
+    setShowPaymentDialog(true);
+  };
+
+  const handlePaymentComplete = (success: boolean, transactionId?: string) => {
+    setShowPaymentDialog(false);
+    setSelectedPlan(null);
+    
+    if (success) {
+      toast({
+        title: "Upgrade successful!",
+        description: `You've been upgraded to ${selectedPlan?.name} plan. Transaction ID: ${transactionId}`,
+      });
+      // In a real app, you would update the tenant's subscription in the database here
+    } else {
+      toast({
+        title: "Payment failed",
+        description: "Your subscription upgrade was not processed. Please try again.",
         variant: "destructive",
       });
-      setLoading(false);
     }
+  };
+
+  const handlePaymentDialogClose = () => {
+    setShowPaymentDialog(false);
+    setSelectedPlan(null);
   };
 
   const getUsagePercentage = (current: number, max: number) => {
@@ -166,7 +197,7 @@ const SubscriptionManager = () => {
                 {currentPlan?.icon && <currentPlan.icon className="h-5 w-5 text-blue-600" />}
                 <span className="font-semibold">{currentPlan?.name} Plan</span>
               </div>
-              <p className="text-2xl font-bold">{currentPlan?.price}</p>
+              <p className="text-2xl font-bold">{currentPlan?.priceDisplay}</p>
               <p className="text-sm text-gray-500">{currentPlan?.period}</p>
             </div>
 
@@ -221,7 +252,7 @@ const SubscriptionManager = () => {
                 <Icon className="h-8 w-8 mx-auto text-blue-600" />
                 <CardTitle>{plan.name}</CardTitle>
                 <div>
-                  <span className="text-3xl font-bold">{plan.price}</span>
+                  <span className="text-3xl font-bold">{plan.priceDisplay}</span>
                   <span className="text-gray-500">/{plan.period}</span>
                 </div>
               </CardHeader>
@@ -249,6 +280,21 @@ const SubscriptionManager = () => {
           );
         })}
       </div>
+
+      {/* Payment Processing Dialog */}
+      {selectedPlan && (
+        <PaymentProcessingDialog
+          open={showPaymentDialog}
+          onClose={handlePaymentDialogClose}
+          paymentData={{
+            amount: selectedPlan.price,
+            method: 'mpesa', // Default to M-Pesa, user can change in dialog
+            orderId: `SUB_${Date.now()}`,
+            description: `${selectedPlan.name} Plan Subscription`
+          }}
+          onPaymentComplete={handlePaymentComplete}
+        />
+      )}
     </div>
   );
 };
