@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import { collection, query, orderBy, limit, onSnapshot, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { testFirebaseConnection } from '@/services/firebaseService';
 import { useToast } from '@/hooks/use-toast';
 import NewSaleDialog from '@/components/NewSaleDialog';
@@ -21,6 +24,13 @@ import ScheduleJobDialog from '@/components/ScheduleJobDialog';
 
 const Dashboard = () => {
   const { toast } = useToast();
+  const [dashboardData, setDashboardData] = useState({
+    sales: [],
+    customers: [],
+    products: [],
+    recentOrders: []
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Test Firebase connection when dashboard loads
@@ -41,89 +51,181 @@ const Dashboard = () => {
     };
     
     testConnection();
+
+    // Set up real-time listeners for dashboard data
+    const unsubscribers: (() => void)[] = [];
+
+    try {
+      // Listen to today's sales
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const salesQuery = query(
+        collection(db, 'sales'), 
+        where('createdAt', '>=', today),
+        orderBy('createdAt', 'desc')
+      );
+      const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
+        const salesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setDashboardData(prev => ({ ...prev, sales: salesData }));
+      });
+      unsubscribers.push(unsubscribeSales);
+
+      // Listen to customers
+      const customersQuery = query(collection(db, 'customers'), orderBy('createdAt', 'desc'));
+      const unsubscribeCustomers = onSnapshot(customersQuery, (snapshot) => {
+        const customersData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setDashboardData(prev => ({ ...prev, customers: customersData }));
+      });
+      unsubscribers.push(unsubscribeCustomers);
+
+      // Listen to products for low stock
+      const productsQuery = query(collection(db, 'products'));
+      const unsubscribeProducts = onSnapshot(productsQuery, (snapshot) => {
+        const productsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setDashboardData(prev => ({ ...prev, products: productsData }));
+      });
+      unsubscribers.push(unsubscribeProducts);
+
+      // Listen to recent orders (sales with more details)
+      const recentOrdersQuery = query(
+        collection(db, 'sales'), 
+        orderBy('createdAt', 'desc'), 
+        limit(5)
+      );
+      const unsubscribeRecentOrders = onSnapshot(recentOrdersQuery, (snapshot) => {
+        const recentOrdersData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setDashboardData(prev => ({ ...prev, recentOrders: recentOrdersData }));
+      });
+      unsubscribers.push(unsubscribeRecentOrders);
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error setting up dashboard listeners:', error);
+      setLoading(false);
+    }
+
+    // Cleanup function
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
   }, [toast]);
+
+  // Calculate real stats
+  const todaysSales = dashboardData.sales.reduce((sum, sale) => sum + (Number(sale.amount) || 0), 0);
+  const pendingOrders = dashboardData.recentOrders.filter(order => order.status === 'pending').length;
+  const activeCustomers = dashboardData.customers.length;
+  const lowStockItems = dashboardData.products.filter(product => 
+    (product.stock || 0) <= (product.lowStockThreshold || 5)
+  ).length;
 
   const stats = [
     {
       title: 'Today\'s Sales',
-      value: 'KSh 45,320',
+      value: `KSh ${todaysSales.toLocaleString()}`,
       change: '+12%',
       icon: CreditCard,
       color: 'text-green-600'
     },
     {
       title: 'Pending Orders',
-      value: '23',
-      change: '+3',
+      value: pendingOrders.toString(),
+      change: `+${pendingOrders}`,
       icon: ShoppingCart,
       color: 'text-blue-600'
     },
     {
       title: 'Active Customers',
-      value: '1,247',
+      value: activeCustomers.toString(),
       change: '+5%',
       icon: Users,
       color: 'text-purple-600'
     },
     {
       title: 'Low Stock Items',
-      value: '8',
-      change: '-2',
+      value: lowStockItems.toString(),
+      change: lowStockItems > 0 ? '-2' : '0',
       icon: AlertCircle,
-      color: 'text-orange-600'
+      color: lowStockItems > 0 ? 'text-orange-600' : 'text-green-600'
     }
   ];
 
-  const recentOrders = [
-    {
-      id: 'ORD-001',
-      customer: 'John Doe',
-      service: 'T-Shirt Printing',
-      amount: 'KSh 2,500',
-      status: 'In Progress',
-      statusColor: 'bg-yellow-100 text-yellow-800'
-    },
-    {
-      id: 'ORD-002',
-      customer: 'Jane Smith',
-      service: 'Domain Renewal',
-      amount: 'KSh 1,200',
-      status: 'Completed',
-      statusColor: 'bg-green-100 text-green-800'
-    },
-    {
-      id: 'ORD-003',
-      customer: 'Mike Johnson',
-      service: 'Laptop Sale',
-      amount: 'KSh 65,000',
-      status: 'Pending',
-      statusColor: 'bg-blue-100 text-blue-800'
-    }
-  ];
+  const formatRecentOrders = () => {
+    return dashboardData.recentOrders.map(order => ({
+      id: order.id,
+      customer: order.customerName || 'Unknown Customer',
+      service: order.service || order.items?.[0]?.name || 'Sale',
+      amount: `KSh ${(order.amount || 0).toLocaleString()}`,
+      status: order.status || 'completed',
+      statusColor: order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                   order.status === 'pending' ? 'bg-blue-100 text-blue-800' :
+                   'bg-yellow-100 text-yellow-800'
+    }));
+  };
 
   const businessModules = [
     {
       name: 'Branding & Printing',
-      orders: 12,
-      revenue: 'KSh 28,400',
+      orders: dashboardData.recentOrders.filter(order => 
+        order.service?.toLowerCase().includes('print') || 
+        order.service?.toLowerCase().includes('brand')
+      ).length,
+      revenue: `KSh ${dashboardData.sales
+        .filter(sale => sale.service?.toLowerCase().includes('print') || sale.service?.toLowerCase().includes('brand'))
+        .reduce((sum, sale) => sum + (Number(sale.amount) || 0), 0)
+        .toLocaleString()}`,
       status: 'Active',
       color: 'from-red-500 to-pink-500'
     },
     {
       name: 'Electronics Sales',
-      orders: 8,
-      revenue: 'KSh 156,300',
+      orders: dashboardData.recentOrders.filter(order => 
+        order.service?.toLowerCase().includes('laptop') || 
+        order.service?.toLowerCase().includes('electronic')
+      ).length,
+      revenue: `KSh ${dashboardData.sales
+        .filter(sale => sale.service?.toLowerCase().includes('laptop') || sale.service?.toLowerCase().includes('electronic'))
+        .reduce((sum, sale) => sum + (Number(sale.amount) || 0), 0)
+        .toLocaleString()}`,
       status: 'Active',
       color: 'from-blue-500 to-cyan-500'
     },
     {
       name: 'Web Services',
-      orders: 15,
-      revenue: 'KSh 45,200',
+      orders: dashboardData.recentOrders.filter(order => 
+        order.service?.toLowerCase().includes('web') || 
+        order.service?.toLowerCase().includes('domain')
+      ).length,
+      revenue: `KSh ${dashboardData.sales
+        .filter(sale => sale.service?.toLowerCase().includes('web') || sale.service?.toLowerCase().includes('domain'))
+        .reduce((sum, sale) => sum + (Number(sale.amount) || 0), 0)
+        .toLocaleString()}`,
       status: 'Active',
       color: 'from-green-500 to-emerald-500'
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -200,21 +302,27 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-semibold text-gray-900">{order.customer}</p>
-                    <p className="text-sm text-gray-600">{order.service}</p>
-                    <p className="text-xs text-gray-500">{order.id}</p>
+              {formatRecentOrders().length > 0 ? (
+                formatRecentOrders().map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-semibold text-gray-900">{order.customer}</p>
+                      <p className="text-sm text-gray-600">{order.service}</p>
+                      <p className="text-xs text-gray-500">{order.id}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">{order.amount}</p>
+                      <Badge className={order.statusColor}>
+                        {order.status}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">{order.amount}</p>
-                    <Badge className={order.statusColor}>
-                      {order.status}
-                    </Badge>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <p>No recent orders found</p>
                 </div>
-              ))}
+              )}
             </div>
             <Button variant="outline" className="w-full mt-4">
               View All Orders
